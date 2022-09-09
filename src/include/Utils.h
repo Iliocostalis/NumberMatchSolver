@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <algorithm>
+#include <Image.h>
 
 struct Position
 {
@@ -42,6 +43,14 @@ inline Direction rotateDirection90(Direction direction)
     }
     
     return Direction::UP;
+}
+
+extern void saveImage(const std::string& name, const Image& image);
+
+inline uint8_t median5(std::array<uint8_t, 5> colors, int index)
+{
+    std::sort(colors.begin(), colors.end());
+    return colors[index];
 }
 
 inline void blurVector(std::vector<int>& values)

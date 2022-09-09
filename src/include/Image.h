@@ -18,30 +18,24 @@ public:
     Image(int width, int height);
     ~Image();
 
-    inline uint8_t getValue(int x, int y) const
-    {
-        return pixels[y * width + x];
-    }
+    uint8_t getValue(int x, int y) const;
+    void setValue(int x, int y, uint8_t value);
 
-    inline void setValue(int x, int y, uint8_t value)
-    {
-        pixels[y * width + x] = value;
-    }
+    void scale(Image* out);
+    void lineFilter(Image* out);
 };
+
+////////////////////////////////////////ImageRGB/////////////////////////////////////////
 
 class ImageRGB : public Image
 {
 public:
     ImageRGB(int width, int height, uint8_t* pixels);
     ImageRGB(int width, int height);
+    ~ImageRGB();
 
-    inline uint8_t getValue(int x, int y, int rgb) const
-    {
-        return pixels[(y * width + x)*3 + rgb];
-    }
+    uint8_t getValue(int x, int y, int rgb) const;
+    void setValue(int x, int y, int rgb, uint8_t value);
 
-    inline void setValue(int x, int y, int rgb, uint8_t value)
-    {
-        pixels[(y * width + x)*3 + rgb] = value;
-    }
+    void toBlackWhite(Image* imageOut);
 };

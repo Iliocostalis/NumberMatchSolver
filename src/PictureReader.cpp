@@ -1,5 +1,4 @@
 #include <PictureReader.h>
-#include <stb_image_write.h>
 #include <vector>
 #include <iostream>
 #include <algorithm>
@@ -8,22 +7,11 @@
 #include <BlockToColorThreshold.h>
 #include <cmath>
 
-void saveImage(const std::string& name, const Image& image)
-{
-    std::string path = "../images/out/" + name;
-    stbi_write_png(path.c_str(), image.width, image.height, 1, image.pixels, 0);
-}
-
-uint8_t median5(std::array<uint8_t, 5> colors, int index)
-{
-    std::sort(colors.begin(), colors.end());
-    return colors[index];
-}
 
 void PictureReader::readImage(ImageRGB& imageRGB)
 {
     Image image(imageRGB.width, imageRGB.height);
-    imageToBlackWhite(imageRGB, image);
+    imageRGB.toBlackWhite(&image);
     //saveImage("bw.png", image);
 
     // resize to max 1000 width
@@ -45,179 +33,23 @@ void PictureReader::readImage(ImageRGB& imageRGB)
 #endif
 
 #ifdef FILTER_FULL_SIZE
-    applyLineFilter(image, imageFiltered);
-    scaleImage(imageFiltered, imageScaled);
+    image.lineFilter(&imageFiltered);
+    imageFiltered.scale(&imageScaled);
 #else
-    scaleImage(image, imageScaled);
-    lineFilter(imageScaled, imageFiltered);
+    image.scale(&imageScaled);
+    imageScaled.lineFilter(&imageFiltered);
 #endif
 
     saveImage("imageFiltered.png", imageFiltered);
     saveImage("imageScaled.png", imageScaled);
 
-    findPlayField(imageFiltered);
+    PlayField playFiled = findPlayField(imageFiltered);
+    findNumbers(imageScaled, playFiled);
 
     saveImage("fin.png", imageFiltered);
 }
 
-void PictureReader::imageToBlackWhite(ImageRGB& imageRGB, Image& image)
-{
-    float dev = 1.0f/255.0f;
-    for(int y = 0; y < imageRGB.height; ++y)
-    {
-        for(int x = 0; x < imageRGB.width; ++x)
-        {
-            //int bw = ((int)imageRGB.getValue(x, y, 0) + (int)imageRGB.getValue(x, y, 1) + (int)imageRGB.getValue(x, y, 2))/3;
-            //float val = 0.2126f * std::pow((float)imageRGB.getValue(x, y, 0)*dev, 2.2f) + 0.7152f * std::pow((float)imageRGB.getValue(x, y, 1)*dev, 2.2f) + 0.0722f * std::pow((float)imageRGB.getValue(x, y, 2)*dev, 2.2f);
-            float val = 0.2126f * (float)imageRGB.getValue(x, y, 0)*dev + 0.7152f * (float)imageRGB.getValue(x, y, 1)*dev + 0.0722f * (float)imageRGB.getValue(x, y, 2)*dev;
-            
-            //int bw = (int)imageRGB.getValue(x, y, 1);
-            //image.setValue(x, y, bw);
-            image.setValue(x, y, (uint8_t) (val*255.0f));
-        }
-    }
-}
 
-void PictureReader::scaleImage(Image& in, Image& out)
-{
-    Image scaledHalf(in.width, out.height);
-
-    int scale = in.width / out.width;
-
-    for(int y = 0; y < out.height; ++y)
-    {
-        for(int x = 0; x < in.width; ++x)
-        {
-            uint8_t val = 255;
-
-            for(int v = 0; v < scale; ++v)
-            {
-                val = std::min(val, in.getValue(x,y*scale+v));
-
-                //uint8_t nVal = in.getValue(x,y*scale+v);
-                //if(nVal + v*3 < val)
-                //    val = nVal;
-            }
-
-            scaledHalf.setValue(x,y,val);
-        }
-    }
-    
-    for(int y = 0; y < out.height; ++y)
-    {
-        for(int x = 0; x < out.width; ++x)
-        {
-            uint8_t val = 255;
-
-            for(int v = 0; v < scale; ++v)
-            {
-                val = std::min(val, scaledHalf.getValue(x*scale+v,y));
-
-                //uint8_t nVal = scaledHalf.getValue(x*scale+v,y);
-                //if(nVal + v*3 < val)
-                //    val = nVal;
-            }
-
-            out.setValue(x,y,val);
-        }
-    }
-}
-
-void PictureReader::lineFilter(Image& in, Image& out)
-{
-    int width = in.width;
-    int height = in.height;
-
-    Image tmp(width, height);
-
-    int mask[] = { -1, 2,  -1,
-                  -1,  2, -1,
-                   -1, 2,  -1};
-
-    int maskL[] = { -3,  2,  -3,
-                    2,  4,  2,
-                   -3,  2,  -3};
-
-    //int maskB[] = { 3,  -2,  3,
-    //                -2,  -4,  -2,
-    //               3,  -2,  3};
-
-    int maskB[] = {  3,  1, -2,  1,  3,
-                     1,  0, -2,  0,  1,
-                    -2, -2, -4, -2, -2,
-                     1,  0, -2,  0,  1,
-                     3,  1, -2,  1,  3};
-
-    int maskLR[] = {  3,  1, -2,  1,  3,
-                      1,  0, -2,  0,  1,
-                     -2, -2, -4, -2, -2,
-                      1,  0, -2,  0,  1,
-                      3,  1, -2,  1,  3};
-
-    int maskI[] = { 0, 0,  0,
-                  0,  1, 0,
-                   0, 0,  0};
-
-    Position tmpPos;
-    for(int y = 3; y < height-3; ++y)
-    {
-        tmpPos.y = y;
-        for(int x = 3; x < width-3; ++x)
-        {
-            tmpPos.x = x;
-            int val1 = getPixelOnLineScoreSmall(in, tmpPos, Direction::UP);
-            int val2 = getPixelOnLineScoreSmall(in, tmpPos, Direction::RIGHT);
-            int val = std::max(val1, val2);
-
-            /*int val = 0;
-            for(int mx = 0; mx < 5; ++mx)
-            {
-                for(int my = 0; my < 5; ++my)
-                {
-                    val += (int)in.getValue(x+mx-2, y+my-2) * maskB[my*5+mx];
-                }
-            }*/
-            //val = -val;
-            val = std::min(255, std::max(val, 0));
-            val = 255-val;
-            //val = val > 70 ? 255:0;
-            tmp.pixels[y*width+x] = (val);
-        }
-    }
-
-    // stage 2
-
-    //std::vector<int> colors;
-    //colors.resize(7*7);
-    std::array<uint8_t, 5> buf;
-    for(int y = 3; y < height-3; ++y)
-    {
-        for(int x = 3; x < width-3; ++x)
-        {
-            buf[0] = tmp.pixels[(y-2) * width + x];
-            buf[1] =  tmp.pixels[(y-1) * width + x];
-            buf[2] =  tmp.pixels[(y) * width + x];
-            buf[3] =  tmp.pixels[(y+1) * width + x];
-            buf[4] =  tmp.pixels[(y+2) * width + x];
-            int medianUp = median5(buf, 3);
-            //int averageUp = (buf[0] + buf[1] + buf[2] + buf[3] + buf[4]) / 5;
-
-            buf[0] = tmp.pixels[(y) * width + x-2];
-            buf[1] =  tmp.pixels[(y) * width + x-1];
-            buf[2] =  tmp.pixels[(y) * width + x];
-            buf[3] =  tmp.pixels[(y) * width + x+1];
-            buf[4] =  tmp.pixels[(y) * width + x+2];
-            int medianLeft = median5(buf, 3);
-            //int averageLeft = (buf[0] + buf[1] + buf[2] + buf[3] + buf[4]) / 5;
-
-
-            //out.setValue(x,y,tmp.getValue(x,y));
-
-            out.pixels[y * width + x] = std::min(medianLeft, medianUp);
-            //out.pixels[y * width + x] = std::min(averageLeft, averageUp);
-        }
-    }    
-}
 
 
 std::array<Position, 3> findPixelsOnLine(Image& image, Position pos, Direction direction, int maxMove)
@@ -746,4 +578,9 @@ PlayField PictureReader::findPlayField(Image& image)
 
 
     return playField;
+}
+
+void PictureReader::findNumbers(const Image& image, const PlayField& playField)
+{
+
 }

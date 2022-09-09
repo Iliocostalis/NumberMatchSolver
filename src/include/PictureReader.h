@@ -7,9 +7,6 @@
 namespace PictureReader
 {
     void readImage(ImageRGB& image);
-    void imageToBlackWhite(ImageRGB& imageRGB, Image& image);
-    void lineFilter(Image& in, Image& out);
-    void scaleImage(Image& imageIn, Image& imageOut);
-    //void findNumberPositions(Image& image);
     PlayField findPlayField(Image& image);
+    void findNumbers(const Image& image, const PlayField& playField);
 };
