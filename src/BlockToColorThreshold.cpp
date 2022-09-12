@@ -118,8 +118,8 @@ int BlockToColorThreshold::getColorThreshold(const Image& image, const Position&
     auto& b = averages;
     auto& a = averagesTmp;
 
-    printVector(b);
-    std::cout << "lowest: " << minVal << "\n"<< std::endl;
+    //printVector(b);
+    //std::cout << "lowest: " << minVal << "\n"<< std::endl;
     
     for(int i = 0; i < 4; ++i)
     {
@@ -134,7 +134,7 @@ int BlockToColorThreshold::getColorThreshold(const Image& image, const Position&
         }
         //printVector(b);
     }
-    printVector(b);
+    //printVector(b);
 
     int indexLast = 0;
     std::vector<int> highPoints;

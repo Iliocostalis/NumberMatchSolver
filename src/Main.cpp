@@ -26,7 +26,7 @@ int width = 0;
 int height = 0;
 int comp = 0;
 
-stbi_uc* data = stbi_load("../images/1.jpg", &width, &height, &comp, STBI_rgb);
+stbi_uc* data = stbi_load("../images/429732173956549456721787238.jpg", &width, &height, &comp, STBI_rgb);
 
 ImageRGB image(width, height, data);
 
