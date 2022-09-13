@@ -17,6 +17,15 @@ Image::Image()
     
 }
 
+Image::Image(const Image& other)
+{
+    width = other.width;
+    height = other.height;
+    pixels = new uint8_t[width*height];
+    std::copy(other.pixels, other.pixels + width*height, pixels);
+    createdBuffer = true;
+}
+
 Image::~Image()
 {
     if(createdBuffer)

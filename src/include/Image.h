@@ -16,6 +16,7 @@ public:
 
     Image(int width, int height, uint8_t* pixels);
     Image(int width, int height);
+    Image(const Image& other);
     ~Image();
 
     uint8_t getValue(int x, int y) const;

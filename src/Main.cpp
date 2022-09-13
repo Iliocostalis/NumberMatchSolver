@@ -11,32 +11,75 @@
 #include <stb_image_write.h>
 #include <PictureReader.h>
 #include <Image.h>
+#include <NeuralNetwork.h>
+#include <Debugging.h>
 
-#define IMAGE_INPUT
+#define TRAIN
+//#define IMAGE_INPUT
 //#define USER_INPUT
 //#define FIXED_INPUT
 
 int main()
 {
-#ifdef IMAGE_INPUT
+#ifdef TRAIN
 
-inputNumbers inputs;
+NeuralNetwork nn;
 
 int width = 0;
 int height = 0;
 int comp = 0;
 
-stbi_uc* data = stbi_load("../images/429732173956549456721787238.jpg", &width, &height, &comp, STBI_rgb);
+std::string path = "../images/429732173956549456721787238#1.jpg";
+stbi_uc* data = stbi_load(path.c_str(), &width, &height, &comp, STBI_rgb);
+std::vector<int> numbers;
+
+std::string startSymbol = "/";
+std::string endSymbol = "#";
+int nameStart = path.find_last_of(startSymbol) + 1;
+int nameEnd = path.find_last_of(endSymbol);
+std::string name = path.substr(nameStart, nameEnd-nameStart);
+
+numbers.resize(name.size());
+
+for(int i = 0; i < name.size(); ++i)
+{
+    int c = (int)name[i];
+    ASSERT(c <= 57 && c >= 48);
+    numbers[i] = c - 48;
+}
+
+
+ImageRGB image(width, height, data);
+std::list<Image> numberImages;
+
+PictureReader::getNumberImagesForNN(image, &numberImages, NeuralNetwork::IMAGE_SIZE, numbers);
+
+ASSERT(numberImages.size() == numbers.size());
+
+int index = 0;
+for(const auto& image : numberImages)
+{
+    nn.addTrainingData(image, numbers[index]);
+    index += 1;
+}
+
+nn.train();
+
+stbi_image_free(data);
+
+#elif IMAGE_INPUT
+
+int width = 0;
+int height = 0;
+int comp = 0;
+
+stbi_uc* data = stbi_load("../images/429732173956549456721787238#1.jpg", &width, &height, &comp, STBI_rgb);
 
 ImageRGB image(width, height, data);
 
 PictureReader::readImage(image);
 
 stbi_image_free(data);
-
-return 0;
-
-NumberGame numberGame(inputs);
 
 #elif defined USER_INPUT
 
@@ -70,6 +113,7 @@ NumberGame numberGame(inputs);
     }
     
     NumberGame numberGame(inputs);
+    numberGame.findSolution();
 
 #elif defined FIXED_INPUT
     //inputNumbers inputs = {1,7,6,1,9,4,1,7,4,
@@ -85,13 +129,13 @@ NumberGame numberGame(inputs);
     //                        0,9,2,5,8,3,5,7,8,
     //                        3,8,7,1,4,9,2,9,6};
     NumberGame numberGame(inputs);
+    numberGame.findSolution();
 #else
 
     srand(2);
     NumberGame numberGame;
+    numberGame.findSolution();
 
 #endif
-
-    numberGame.findSolution();
     return 0;
 }

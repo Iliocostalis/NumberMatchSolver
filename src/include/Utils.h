@@ -13,6 +13,8 @@ struct PlayField
 {
     Position topLeft;
     Position topRight;
+    Position botLeft;
+    Position botRight;
     float squareWidth;
     float squareHeight;
 };
@@ -225,7 +227,7 @@ inline int getPixelOnLineScoreSmall(Image& image, Position pos, Direction direct
     return val;
 }
 
-inline int getPixelOnLineScore(Image& image, Position pos, Direction direction)
+inline int getPixelOnLineScore(const Image& image, Position pos, Direction direction)
 {
     int maskUD[] = {  3,  4,  2,  0,  2,  4,  3,
                      -3,  0,  0,  0,  0,  0, -3,
