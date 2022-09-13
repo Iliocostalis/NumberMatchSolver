@@ -3,6 +3,11 @@
 #include <Image.h>
 #include <vector>
 #include <list>
+#include <string>
+
+#define NN_IMAGE_SIZE 20
+#define IMAGE_NUMBER_GRAY 10
+#define IMAGE_NUMBER_EMPTY 11
 
 class NeuralNetwork
 {
@@ -12,33 +17,33 @@ class NeuralNetwork
         std::vector<float> output;
         int value;
 
-        TrainData(const Image& image, int value);
+        TrainData(const Image& image, int value, int countOutput);
     };
 
 
-    const unsigned int num_input = IMAGE_SIZE*IMAGE_SIZE;
-    const unsigned int num_output = 10;
+    const unsigned int num_input = NN_IMAGE_SIZE*NN_IMAGE_SIZE;
+    const unsigned int num_output = 12;
     const unsigned int num_layers = 4;
     const unsigned int num_neurons_hidden1 = 100;
     const unsigned int num_neurons_hidden2 = 50;
 
-    const float desired_error = 0.0f;
+    const float desired_error = 0.001f;
     const unsigned int max_epochs = 1000;
-    const unsigned int epochs_between_reports = 1;
+    const unsigned int epochs_between_reports = 5;
 
     std::list<TrainData> trainDataList;
     fann* ann;
 
 public:
-    static const int IMAGE_SIZE = 20;
-
-public:
 
     NeuralNetwork();
+    NeuralNetwork(const std::string& path);
 
     void addTrainingData(const Image& image, int value);
 
     void train();
 
-    int run(const Image& image);
+    int run(const Image& image) const; 
+
+    void save(const std::string& path) const;
 };

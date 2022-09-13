@@ -4,12 +4,15 @@
 #include <Image.h>
 #include <Utils.h>
 #include <list>
+#include <NeuralNetwork.h>
 
 namespace PictureReader
 {
-    void readImage(ImageRGB& image);
+    void readImage(ImageRGB& imageRGB);
+    void getNumbers(ImageRGB& imageRGB, std::vector<int>* numbers, const NeuralNetwork& nn);
+    void getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* out, const std::vector<int>& numbers);
+
     PlayField findPlayField(Image& image);
-    void findNumbers(const Image& image, const PlayField& playField);
-    void getNumberImages(const Image& image, Image& imageFiltered, const PlayField& playField, std::list<Image>* out, int imageSize, const std::vector<int>& numbers);
-    void getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* out, int imageSize, const std::vector<int>& numbers);
+    void findNumbers(const Image& image, Image& imageFiltered, const PlayField& playField, std::vector<int>* numbers, const NeuralNetwork& nn);
+    void getNumberImages(const Image& image, Image& imageFiltered, const PlayField& playField, std::list<Image>* out, const std::vector<int>& numbers);
 };

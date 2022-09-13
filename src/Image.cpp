@@ -32,12 +32,12 @@ Image::~Image()
         delete[] pixels;
 }
 
-inline uint8_t Image::getValue(int x, int y) const
+uint8_t Image::getValue(int x, int y) const
 {
     return pixels[y * width + x];
 }
 
-inline void Image::setValue(int x, int y, uint8_t value)
+void Image::setValue(int x, int y, uint8_t value)
 {
     pixels[y * width + x] = value;
 }
@@ -162,12 +162,12 @@ ImageRGB::~ImageRGB()
         delete[] pixels;
 }
 
-inline uint8_t ImageRGB::getValue(int x, int y, int rgb) const
+uint8_t ImageRGB::getValue(int x, int y, int rgb) const
 {
     return pixels[(y * width + x)*3 + rgb];
 }
 
-inline void ImageRGB::setValue(int x, int y, int rgb, uint8_t value)
+void ImageRGB::setValue(int x, int y, int rgb, uint8_t value)
 {
     pixels[(y * width + x)*3 + rgb] = value;
 }

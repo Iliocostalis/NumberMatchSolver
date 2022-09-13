@@ -6,6 +6,7 @@
 #include <AverageValues.h>
 #include <BlockToColorThreshold.h>
 #include <cmath>
+#include <NumberGame.h>
 
 
 void PictureReader::readImage(ImageRGB& imageRGB)
@@ -33,12 +34,34 @@ void PictureReader::readImage(ImageRGB& imageRGB)
     //saveImage("imageScaled.png", imageScaled);
 
     PlayField playFiled = findPlayField(imageFiltered);
-    findNumbers(imageScaled, playFiled);
+    //findNumbers(imageScaled, imageFiltered, playFiled);
 
     //saveImage("fin.png", imageFiltered);
 }
 
-void PictureReader::getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* out, int imageSize, const std::vector<int>& numbers)
+void PictureReader::getNumbers(ImageRGB& imageRGB, std::vector<int>* numbers, const NeuralNetwork& nn)
+{
+    Image image(imageRGB.width, imageRGB.height);
+    imageRGB.toBlackWhite(&image);
+
+    // resize to max 1000 width
+    int newWidth = image.width;
+    int scale = 1;
+    while(newWidth > 1000) newWidth /= 2;
+
+    int newHeight = image.height / (image.width / newWidth);
+
+    Image imageScaled(newWidth, newHeight);
+    Image imageFiltered(newWidth, newHeight);
+
+    image.scale(&imageScaled);
+    imageScaled.lineFilter(&imageFiltered);
+
+    PlayField playFiled = findPlayField(imageFiltered);
+    findNumbers(imageScaled, imageFiltered, playFiled, numbers, nn);
+}
+
+void PictureReader::getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* out, const std::vector<int>& numbers)
 {
     Image image(imageRGB.width, imageRGB.height);
     imageRGB.toBlackWhite(&image);
@@ -56,9 +79,9 @@ void PictureReader::getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* o
     imageScaled.lineFilter(&imageFiltered);
 
     PlayField playFiled = findPlayField(imageFiltered);
-    getNumberImages(imageScaled, imageFiltered, playFiled, out, imageSize, numbers);
+    getNumberImages(imageScaled, imageFiltered, playFiled, out, numbers);
 
-    saveImage("fin.png", imageFiltered);
+    //saveImage("fin.png", imageFiltered);
 }
 
 
@@ -558,7 +581,8 @@ PlayField PictureReader::findPlayField(Image& image)
     int squareWidth = playfieldWidth / 9;
 
 
-    int centerIndex = (squareWidth / stepSize) / 2;
+    //int centerIndex = (squareWidth / stepSize) / 2;
+    int centerIndex = 2; // take point #2 / last - 2
 
     playField.squareWidth = squareWidth;
     playField.squareHeight = squareWidth;
@@ -572,7 +596,7 @@ PlayField PictureReader::findPlayField(Image& image)
     playField.botLeft = lineLeftDown.back();
     playField.botRight = lineRightDown.back();
 
-    /*showPoint(image, playField.topLeft);
+    showPoint(image, playField.topLeft);
     showPoint(image, playField.topRight);
 
     for(auto&p : upLine1)
@@ -589,94 +613,54 @@ PlayField PictureReader::findPlayField(Image& image)
     for(auto&p : lineLeftDown)
         image.setValue(p.x, p.y, 255);
     for(auto&p : lineRightDown)
-        image.setValue(p.x, p.y, 255);*/
+        image.setValue(p.x, p.y, 255);
 
 
     return playField;
 }
 
-void PictureReader::findNumbers(const Image& image, const PlayField& playField)
+int getCellStatus(Image& number, int size, int* outColorWhite)
 {
-    float numberWidth = (float)(playField.topRight.x - playField.topLeft.x) / 9.0f;
-    float heightDiff = (float)(playField.topRight.y - playField.topLeft.y) / 9.0f;
-
-    //Image singleNumber(numberWidth, numberWidth);
-    Image singleNumber(64, 64);
-    Image singleNumberCenter(64, 64);
-    Image singleNumberScaled(20, 20);
-    int cutOutside = 4;
-    //for(int y = 0; y < 11; ++y)
+    int averageOutside = 0;
+    int countOutside = 0;
+    int averageInside = 0;
+    int countInside = 0;
+    int border = size / 6;
+    for(int ys = 2; ys < size-2; ys+=1)
     {
-        for(int x = 0; x < 9; ++x)
+        for(int xs = 2; xs < size-2; xs+=1)
         {
-            Position pos;
-            pos.x = playField.topLeft.x + (int)(numberWidth * (float)x + 0.5f);
-            pos.y = playField.topLeft.y + (int)(heightDiff * (float)x + 0.5f);
-
-            int size = numberWidth-cutOutside*2;
-            int avX = 0;
-            int avY = 0;
-            int count = 0;
-            int minX = 1000;
-            int maxX = 0;
-            int minY = 1000;
-            int maxY = 0;
-            for(int ys = 0; ys < size; ++ys)
+            if(xs > border && xs < size-2-border && ys > border && ys < size-2-border) // inside
             {
-                for(int xs = 0; xs < size; ++xs)
-                {
-                    int value = image.getValue(xs+pos.x+cutOutside, ys+pos.y+cutOutside);
-                    if(value < 100)
-                    {
-                        minX = std::min(xs, minX);
-                        maxX = std::max(xs, maxX);
-                        minY = std::min(ys, minY);
-                        maxY = std::max(ys, maxY);
-                        //value = 0;
-                        avX += xs;
-                        avY += ys;
-                        count += 1;
-                    }
-                    //else
-                    //    value = 255;
-                    value = std::max(0, std::min(255, (value - 100) * 5));
-                    singleNumber.setValue(xs,ys, value);
-                }
+                countInside += 1;
+                averageInside += number.getValue(xs, ys);
             }
-
-            //int centerOffsetX = (int)((float)avX / (float)count + 0.5f) - numberWidth/2;
-            //int centerOffsetY = (int)((float)avY / (float)count + 0.5f) - numberWidth/2;
-            int centerOffsetX = (int)((float)(minX + maxX) / 2.0f + 0.5f - size/2 + 100.0f) - 100;
-            int centerOffsetY = (int)((float)(minY + maxY) / 2.0f + 0.5f - size/2 + 100.0f) - 100;
-            
-            for(int ys = 0; ys < size; ++ys)
+            else
             {
-                for(int xs = 0; xs < size; ++xs)
-                {
-                    int ox = std::max(0, std::min(size-1, xs+centerOffsetX));
-                    int oy = std::max(0, std::min(size-1, ys+centerOffsetY));
-                    int value = singleNumber.getValue(ox, oy);
-                    singleNumberCenter.setValue(xs,ys, value);
-                }
+                countOutside += 1;
+                averageOutside += number.getValue(xs, ys);
             }
-
-            float scale = (float)size / 20.0f;
-            for(int ys = 0; ys < 20; ++ys)
-            {
-                for(int xs = 0; xs < 20; ++xs)
-                {
-                    int value = singleNumberCenter.getValue((int)((float)xs*scale + 0.5f), (int)((float)ys*scale + 0.5f));
-                    singleNumberScaled.setValue(xs,ys, value);
-                }
-            }
-
-            std::string name = std::string("number_s_") + std::to_string(x) + std::string(".png");
-            saveImage(name, singleNumberScaled);
         }
     }
+    countOutside = std::max(1, countOutside);
+    countInside = std::max(1, countInside);
+    averageOutside /= countOutside;
+    averageInside /= countInside;
+
+    *outColorWhite = std::min(255, averageOutside+10);
+
+    int diffAv = averageOutside - averageInside;
+
+    if(diffAv >= 14)
+        return 1;
+
+    if(diffAv >= 2)
+        return 0;
+
+    return -1;
 }
 
-void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, const PlayField& playField, std::list<Image>* out, int imageSize, const std::vector<int>& numbers)
+void PictureReader::findNumbers(const Image& image, Image& imageFiltered, const PlayField& playField, std::vector<int>* numbers, const NeuralNetwork& nn)
 {
     float numberWidth = (float)(playField.topRight.x - playField.topLeft.x) / 9.0f;
     float heightDiff = (float)(playField.topRight.y - playField.topLeft.y) / 9.0f;
@@ -695,10 +679,128 @@ void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, co
     rightDownY /= std::abs(rightDownY);
 
     int cutOutside = 3;
+    Image singleNumber(numberWidth, numberWidth);
+    Image singleNumberScaled(20, 20);
+    for(int y = 0; y < GAME_HEIGHT_VISIBLE; ++y)
+    {
+        if(y != 0)
+        {
+            // left
+            topLeft.x += leftDownX * numberWidth;
+            topLeft.y += leftDownY * numberWidth;
+            Position movedDown(topLeft);
+            Position movedRight(topLeft);
+            movedDown.y += numberWidth/2;
+            movedRight.x += numberWidth/2;
+
+            Position centerDown = centerOnLine(imageFiltered, movedDown, Direction::LEFT);
+            Position centerRight = centerOnLine(imageFiltered, movedRight, Direction::DOWN);
+
+            topLeft.x = centerDown.x;
+            topLeft.y = centerRight.y;
+
+            // right
+            topRight.x += rightDownX * numberWidth;
+            topRight.y += rightDownY * numberWidth;
+
+            movedDown = topRight;
+            movedRight = topRight;
+
+            movedDown.y += numberWidth/2;
+            movedRight.x -= numberWidth/2;
+
+            centerDown = centerOnLine(imageFiltered, movedDown, Direction::LEFT);
+            centerRight = centerOnLine(imageFiltered, movedRight, Direction::DOWN);
+
+            topRight.x = centerDown.x;
+            topRight.y = centerRight.y;
+        }
+
+        //showPoint(imageFiltered, topLeft);
+        //showPoint(imageFiltered, topRight);
+
+        numberWidth = (float)(topRight.x - topLeft.x) / 9.0f;
+        heightDiff = (float)(topRight.y - topLeft.y) / 9.0f;
+        int size = (int)numberWidth-cutOutside*2;
+
+        for(int x = 0; x < GAME_WIDTH; ++x)
+        {
+            Position pos;
+            pos.x = topLeft.x + (int)(numberWidth * (float)x + 0.5f);
+            pos.y = topLeft.y + (int)(heightDiff * (float)x + 0.5f);
+
+            int minX = 1000;
+            int maxX = 0;
+            int minY = 1000;
+            int maxY = 0;
+            int colorBlack = 100;
+            for(int ys = 0; ys < size; ++ys)
+            {
+                for(int xs = 0; xs < size; ++xs)
+                {
+                    int value = image.getValue(xs+pos.x+cutOutside, ys+pos.y+cutOutside);
+                    if(value < colorBlack)
+                    {
+                        minX = std::min(xs, minX);
+                        maxX = std::max(xs, maxX);
+                        minY = std::min(ys, minY);
+                        maxY = std::max(ys, maxY);
+                    }
+                    singleNumber.setValue(xs, ys, value);
+                }
+            }
+
+            int centerOffsetX = (int)((float)(minX + maxX) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
+            int centerOffsetY = (int)((float)(minY + maxY) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
+
+            Image& imageOut = singleNumberScaled;
+            float scale = (float)size / (float)NN_IMAGE_SIZE;
+            for(int ys = 0; ys < NN_IMAGE_SIZE; ++ys)
+            {
+                for(int xs = 0; xs < NN_IMAGE_SIZE; ++xs)
+                {
+                    int xx = (int)((float)xs*scale + 0.5f);
+                    int yy = (int)((float)ys*scale + 0.5f);
+                    int ox = std::max(0, std::min(size-1, xx+centerOffsetX));
+                    int oy = std::max(0, std::min(size-1, yy+centerOffsetY));
+                    int value = singleNumber.getValue(ox, oy);
+                    imageOut.setValue(xs,ys, value);
+                }
+            }
+
+            int number = nn.run(imageOut);
+            if(number == IMAGE_NUMBER_EMPTY)
+                return;
+
+            numbers->push_back(number);
+            //std::string name = std::string("number_s_t") + std::string("_y") + std::to_string(y) + std::string("_x") + std::to_string(x) + std::string(".png");
+            //saveImage(name, imageOut);
+        }
+    }
+}
+
+void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, const PlayField& playField, std::list<Image>* out, const std::vector<int>& numbers)
+{
+    float numberWidth = (float)(playField.topRight.x - playField.topLeft.x) / 9.0f;
+    float heightDiff = (float)(playField.topRight.y - playField.topLeft.y) / 9.0f;
+
+    Position topLeft(playField.topLeft);
+    Position topRight(playField.topRight);
+
+    float leftDownX = (float)(playField.botLeft.x - playField.topLeft.x);
+    float leftDownY = (float)(playField.botLeft.y - playField.topLeft.y);
+    leftDownX /= std::abs(leftDownY);
+    leftDownY /= std::abs(leftDownY);
+
+    float rightDownX = (float)(playField.botRight.x - playField.topRight.x);
+    float rightDownY = (float)(playField.botRight.y - playField.topRight.y);
+    rightDownX /= std::abs(rightDownY);
+    rightDownY /= std::abs(rightDownY);
+
+    int imageCount = 0;
+    int cutOutside = 3;
     int size = numberWidth;
     Image singleNumber(size, size);
-    Image singleNumberCenter(size, size);
-    Image singleNumberScaled(20, 20);
     for(int y = 0; y < 11; ++y)
     {
         if(y != 0)
@@ -734,8 +836,8 @@ void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, co
             topRight.y = centerRight.y;
         }
 
-        showPoint(imageFiltered, topLeft);
-        showPoint(imageFiltered, topRight);
+        //showPoint(imageFiltered, topLeft);
+        //showPoint(imageFiltered, topRight);
 
         numberWidth = (float)(topRight.x - topLeft.x) / 9.0f;
         heightDiff = (float)(topRight.y - topLeft.y) / 9.0f;
@@ -743,13 +845,23 @@ void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, co
 
         for(int x = 0; x < 9; ++x)
         {
+            if(imageCount >= numbers.size())
+                return;
+
             Position pos;
             pos.x = topLeft.x + (int)(numberWidth * (float)x + 0.5f);
             pos.y = topLeft.y + (int)(heightDiff * (float)x + 0.5f);
 
-            int avX = 0;
-            int avY = 0;
-            int count = 0;
+            for(int ys = 0; ys < size; ++ys)
+            {
+                for(int xs = 0; xs < size; ++xs)
+                {
+                    int value = image.getValue(xs+pos.x+cutOutside, ys+pos.y+cutOutside);
+                    singleNumber.setValue(xs,ys, value);
+                }
+            }
+            
+            int colorBlack = 100;
             int minX = 1000;
             int maxX = 0;
             int minY = 1000;
@@ -758,55 +870,38 @@ void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, co
             {
                 for(int xs = 0; xs < size; ++xs)
                 {
-                    int value = image.getValue(xs+pos.x+cutOutside, ys+pos.y+cutOutside);
-                    if(value < 100)
+                    int value = singleNumber.getValue(xs, ys);
+                    if(value < colorBlack)
                     {
                         minX = std::min(xs, minX);
                         maxX = std::max(xs, maxX);
                         minY = std::min(ys, minY);
                         maxY = std::max(ys, maxY);
-                        //value = 0;
-                        avX += xs;
-                        avY += ys;
-                        count += 1;
                     }
-                    //else
-                    //    value = 255;
-                    value = std::max(0, std::min(255, (value - 100) * 5));
-                    singleNumber.setValue(xs,ys, value);
                 }
             }
 
-            if(count < 50) // empty square
-                return;
-
-            int centerOffsetX = (int)((float)(minX + maxX) / 2.0f + 0.5f - size/2 + 100.0f) - 100;
-            int centerOffsetY = (int)((float)(minY + maxY) / 2.0f + 0.5f - size/2 + 100.0f) - 100;
+            int centerOffsetX = (int)((float)(minX + maxX) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
+            int centerOffsetY = (int)((float)(minY + maxY) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
             
-            for(int ys = 0; ys < size; ++ys)
+            Image& imageOut = out->emplace_back(NN_IMAGE_SIZE, NN_IMAGE_SIZE);
+            float scale = (float)size / (float)NN_IMAGE_SIZE;
+            for(int ys = 0; ys < NN_IMAGE_SIZE; ++ys)
             {
-                for(int xs = 0; xs < size; ++xs)
+                for(int xs = 0; xs < NN_IMAGE_SIZE; ++xs)
                 {
-                    int ox = std::max(0, std::min(size-1, xs+centerOffsetX));
-                    int oy = std::max(0, std::min(size-1, ys+centerOffsetY));
+                    int xx = (int)((float)xs*scale + 0.5f);
+                    int yy = (int)((float)ys*scale + 0.5f);
+                    int ox = std::max(0, std::min(size-1, xx+centerOffsetX));
+                    int oy = std::max(0, std::min(size-1, yy+centerOffsetY));
                     int value = singleNumber.getValue(ox, oy);
-                    singleNumberCenter.setValue(xs,ys, value);
-                }
-            }
-
-            Image& imageOut = out->emplace_back(imageSize, imageSize);
-            float scale = (float)size / 20.0f;
-            for(int ys = 0; ys < 20; ++ys)
-            {
-                for(int xs = 0; xs < 20; ++xs)
-                {
-                    int value = singleNumberCenter.getValue((int)((float)xs*scale + 0.5f), (int)((float)ys*scale + 0.5f));
                     imageOut.setValue(xs,ys, value);
                 }
             }
 
             //std::string name = std::string("number_s_n") + std::to_string(numbers[y * 9 + x]) + std::string("_y") + std::to_string(y) + std::string("_x") + std::to_string(x) + std::string(".png");
             //saveImage(name, imageOut);
+            imageCount += 1;
         }
     }
 }

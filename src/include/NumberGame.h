@@ -5,6 +5,9 @@
 
 #define GAME_WIDTH 9
 #define GAME_START_HEIGHT 3
+#define GAME_HEIGHT_VISIBLE 11
+#define FIELD_EMPTY -2
+#define FIELD_GRAY -1
 
 typedef std::array<int, GAME_WIDTH*GAME_START_HEIGHT> inputNumbers;
 
@@ -252,7 +255,7 @@ private:
 
 public:
     NumberGame();
-    NumberGame(std::array<int, GAME_WIDTH*GAME_START_HEIGHT>& numbers);
+    NumberGame(std::vector<int>& numbersIn);
     void findPairs();
     void removePair(int index);
     void findSolution();

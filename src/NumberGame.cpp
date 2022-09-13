@@ -24,19 +24,20 @@ NumberGame::NumberGame()
     width = GAME_WIDTH;
     height = GAME_START_HEIGHT;
     numbers.resize(GAME_WIDTH * GAME_START_HEIGHT * 2 * 2 * 2 * 2);
-    std::fill(numbers.begin(), numbers.end(), -1);
+    std::fill(numbers.begin(), numbers.end(), FIELD_EMPTY);
 
     for(auto& n : numbers)
         n = rand() % 10;
 }
 
-NumberGame::NumberGame(std::array<int, GAME_WIDTH*GAME_START_HEIGHT>& numbersIn)
+NumberGame::NumberGame(std::vector<int>& numbersIn)
 {
     width = GAME_WIDTH;
-    height = GAME_START_HEIGHT;
+    height = (numbersIn.size() + GAME_WIDTH - 1) / GAME_WIDTH;
     numbers.resize(GAME_WIDTH * GAME_START_HEIGHT * 2 * 2 * 2 * 2);
-    std::fill(numbers.begin(), numbers.end(), -1);
-    std::memcpy(numbers.data(), numbersIn.data(), GAME_WIDTH * GAME_START_HEIGHT * sizeof(int));
+    std::fill(numbers.begin(), numbers.end(), FIELD_EMPTY);
+    std::copy(numbersIn.begin(), numbersIn.end(), numbers.data());
+    //std::memcpy(numbers.data(), numbersIn.data(), GAME_WIDTH * GAME_START_HEIGHT * sizeof(int));
 }
 
 void NumberGame::findPairs()
@@ -66,8 +67,8 @@ void NumberGame::findPairs()
 void NumberGame::removePair(int index)
 {
     Pair& pair = pairs[index];
-    numbers[pair.ay * width + pair.ax] = -2;
-    numbers[pair.by * width + pair.bx] = -2;
+    numbers[pair.ay * width + pair.ax] = FIELD_GRAY;
+    numbers[pair.by * width + pair.bx] = FIELD_GRAY;
 
     for(int y = 0; y < height; ++y)
     {
@@ -160,7 +161,7 @@ void NumberGame::addNewNumbers()
     {
         if(numbers[i] >= 0)
             ++countNumbers;
-        if(numbers[i] != -1)
+        if(numbers[i] != FIELD_EMPTY)
             ++countFields;
     }
 

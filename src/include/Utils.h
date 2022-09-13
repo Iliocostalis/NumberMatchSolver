@@ -106,6 +106,9 @@ inline std::vector<float> getFrequenzyOfValues(std::vector<int>& values, int fre
         maxVal = std::max(maxVal, val);
     }
 
+    if(minVal == maxVal)
+        return std::vector<float>();
+
     float scale = (float)(frequenzyWidth-addExtra) / (maxVal - minVal);
 
     std::vector<float> averages;
@@ -127,6 +130,20 @@ inline std::vector<float> getFrequenzyOfValues(std::vector<int>& values, int fre
 inline std::vector<int> getHighPoints(std::vector<int>& values)
 {
     std::vector<int> highPoints;
+    for(int i = 1; i < values.size()-1; ++i)
+    {
+        if(values[i] > values[i-1] && values[i] >= values[i+1])
+        {
+            highPoints.push_back(i);
+        }
+    }
+
+    return highPoints;
+}
+
+inline std::vector<float> getHighPoints(std::vector<float>& values)
+{
+    std::vector<float> highPoints;
     for(int i = 1; i < values.size()-1; ++i)
     {
         if(values[i] > values[i-1] && values[i] >= values[i+1])

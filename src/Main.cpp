@@ -13,9 +13,12 @@
 #include <Image.h>
 #include <NeuralNetwork.h>
 #include <Debugging.h>
+#include <filesystem>
 
-#define TRAIN
+#define TEST_ALL
+//#define TRAIN
 //#define IMAGE_INPUT
+//#define TEST_ALL
 //#define USER_INPUT
 //#define FIXED_INPUT
 
@@ -23,63 +26,98 @@ int main()
 {
 #ifdef TRAIN
 
-NeuralNetwork nn;
+    NeuralNetwork nn;
 
-int width = 0;
-int height = 0;
-int comp = 0;
+    std::string path = "../images/";
+    for (const auto & entry : std::filesystem::directory_iterator(path))
+    {
+        if(entry.is_directory())
+            continue;
 
-std::string path = "../images/429732173956549456721787238#1.jpg";
-stbi_uc* data = stbi_load(path.c_str(), &width, &height, &comp, STBI_rgb);
-std::vector<int> numbers;
+        std::cout << entry.path() << std::endl;
+        int width = 0;
+        int height = 0;
+        int comp = 0;
 
-std::string startSymbol = "/";
-std::string endSymbol = "#";
-int nameStart = path.find_last_of(startSymbol) + 1;
-int nameEnd = path.find_last_of(endSymbol);
-std::string name = path.substr(nameStart, nameEnd-nameStart);
+        std::string imagePath = entry.path();
+        //std::string path = "../images/429732173956549456721787238#1.jpg";
+        stbi_uc* data = stbi_load(imagePath.c_str(), &width, &height, &comp, STBI_rgb);
+        std::vector<int> numbers;
 
-numbers.resize(name.size());
+        std::string startSymbol = "/";
+        std::string endSymbol = "#";
+        int nameStart = imagePath.find_last_of(startSymbol) + 1;
+        int nameEnd = imagePath.find_last_of(endSymbol);
+        std::string name = imagePath.substr(nameStart, nameEnd-nameStart);
 
-for(int i = 0; i < name.size(); ++i)
-{
-    int c = (int)name[i];
-    ASSERT(c <= 57 && c >= 48);
-    numbers[i] = c - 48;
-}
+        numbers.resize(name.size() + 4);
+        std::fill(numbers.begin(), numbers.end(), IMAGE_NUMBER_EMPTY);
+
+        for(int i = 0; i < name.size(); ++i)
+        {
+            int c = (int)name[i];
+            if(c == 'x')
+                numbers[i] = IMAGE_NUMBER_GRAY;
+            else
+            {
+                ASSERT(c <= 57 && c >= 48);
+                numbers[i] = c - 48;
+            }
+        }
+
+        ImageRGB image(width, height, data);
+        std::list<Image> numberImages;
+
+        PictureReader::getNumberImagesForNN(image, &numberImages, numbers);
+
+        ASSERT(numberImages.size() == numbers.size());
+
+        int index = 0;
+        for(const auto& image : numberImages)
+        {
+            nn.addTrainingData(image, numbers[index]);
+            index += 1;
+        }
+
+        stbi_image_free(data);
+    }
+
+    nn.train();
+    nn.save("../neural_network/network");
+
+#elif defined IMAGE_INPUT
+
+    int width = 0;
+    int height = 0;
+    int comp = 0;
+
+    stbi_uc* data = stbi_load("../images/tt.jpg", &width, &height, &comp, STBI_rgb);
+
+    ImageRGB image(width, height, data);
+
+    PictureReader::readImage(image);
+
+    stbi_image_free(data);
+
+#elif defined TEST_ALL
+
+    NeuralNetwork nn("../neural_network/network");
+    std::string imagePath = "../images/test/test2.jpg";
+
+    int width = 0;
+    int height = 0;
+    int comp = 0;
+    stbi_uc* data = stbi_load(imagePath.c_str(), &width, &height, &comp, STBI_rgb);
+    ImageRGB image(width, height, data);
+
+    std::vector<int> numbers;
+    PictureReader::getNumbers(image, &numbers, nn);
+
+    stbi_image_free(data);
 
 
-ImageRGB image(width, height, data);
-std::list<Image> numberImages;
-
-PictureReader::getNumberImagesForNN(image, &numberImages, NeuralNetwork::IMAGE_SIZE, numbers);
-
-ASSERT(numberImages.size() == numbers.size());
-
-int index = 0;
-for(const auto& image : numberImages)
-{
-    nn.addTrainingData(image, numbers[index]);
-    index += 1;
-}
-
-nn.train();
-
-stbi_image_free(data);
-
-#elif IMAGE_INPUT
-
-int width = 0;
-int height = 0;
-int comp = 0;
-
-stbi_uc* data = stbi_load("../images/429732173956549456721787238#1.jpg", &width, &height, &comp, STBI_rgb);
-
-ImageRGB image(width, height, data);
-
-PictureReader::readImage(image);
-
-stbi_image_free(data);
+    NumberGame numberGame(numbers);
+    numberGame.findSolution();
 
 #elif defined USER_INPUT
 
