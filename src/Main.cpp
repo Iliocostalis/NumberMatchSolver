@@ -106,7 +106,7 @@ int main()
 #elif defined TEST_ALL
 
     NeuralNetwork nn("../neural_network/network");
-    std::string imagePath = "../images/test/test3.jpg";
+    std::string imagePath = "../images/test/test.jpg";
 
     int width = 0;
     int height = 0;

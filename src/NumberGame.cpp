@@ -3,6 +3,7 @@
 #include <iostream>
 #include <NumberGame.h>
 #include <cstring>
+#include <list>
 
 inline void setOutputColorNormal()
 {
@@ -92,12 +93,6 @@ void NumberGame::removePair(int index)
 
 void NumberGame::findSolution()
 {
-    int selectedAx = -1;
-    int selectedAy = -1;
-    int selectedBx = -1;
-    int selectedBy = -1;
-    int currentScore = 0;
-
     std::vector<NumberGame> gameHistory;
     gameHistory.push_back(*this);
     gameHistory.back().findPairs();
@@ -131,6 +126,8 @@ void NumberGame::findSolution()
             else
             {
                 gameHistory.pop_back();
+                if(gameHistory.size() == 0)
+                    break;
                 continue;
             }
         }
@@ -151,6 +148,88 @@ void NumberGame::findSolution()
         gameHistory.back().findPairs();
 
     } while(true);
+
+
+
+
+
+
+
+/*
+    std::list<NumberGame> gameHistoryShortestWin;
+    std::list<NumberGame> gameHistory;
+    gameHistory.push_back(*this);
+    gameHistory.back().findPairs();
+    //gameHistory.back().print();
+
+    do
+    {
+        NumberGame& game = gameHistory.back();
+
+        if(game.pairs.size() == 0)
+        {
+            if(game.height == 0)
+            {
+                //std::cout << "Solution found!" << std::endl;
+                if(gameHistoryShortestWin.size() > gameHistory.size())
+                {
+                    gameHistoryShortestWin.clear();
+                    for(const auto& gh : gameHistory)
+                        gameHistoryShortestWin.push_back(gh);
+                }
+                else if(gameHistoryShortestWin.size() == 0)
+                {
+                    for(const auto& gh : gameHistory)
+                        gameHistoryShortestWin.push_back(gh);
+                }
+                gameHistory.pop_back();
+                if(gameHistory.size() == 0)
+                    break;
+                continue;
+            }
+            else if(game.addsLeft > 0)
+            {
+                gameHistory.push_back(game);
+                gameHistory.back().addNewNumbers();
+                gameHistory.back().findPairs();
+                gameHistory.back().pairIndex = 0;
+                continue;
+            }
+            else
+            {
+                gameHistory.pop_back();
+                if(gameHistory.size() == 0)
+                    break;
+                continue;
+            }
+        }
+
+        if(game.pairIndex >= game.pairs.size())
+        {
+            gameHistory.pop_back();
+            if(gameHistory.size() == 0)
+                break;
+            continue;
+        }
+
+        int removePairIndex = game.pairIndex;
+        game.pairIndex += 1;
+        //game.print();
+
+        gameHistory.push_back(game);
+        gameHistory.back().removePair(removePairIndex);
+        gameHistory.back().pairIndex = 0;
+        gameHistory.back().findPairs();
+
+    } while(true);
+
+    // print solution
+    while(gameHistoryShortestWin.size() > 0)
+    {
+        gameHistoryShortestWin.back().print();
+        gameHistoryShortestWin.pop_back();
+    }
+    this->print();*/
 }
 
 void NumberGame::addNewNumbers()
