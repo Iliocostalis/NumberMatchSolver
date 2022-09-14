@@ -23,6 +23,7 @@ public:
     void setValue(int x, int y, uint8_t value);
 
     void scale(Image* out);
+    void scaleNearest(Image* out);
     void lineFilter(Image* out);
 };
 
@@ -39,4 +40,5 @@ public:
     void setValue(int x, int y, int rgb, uint8_t value);
 
     void toBlackWhite(Image* imageOut);
+    void scaleAndBW(Image* imageOut);
 };

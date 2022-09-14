@@ -2,19 +2,14 @@
 #include <vector>
 #include <algorithm>
 #include <Image.h>
-
-struct Position
-{
-    int x;
-    int y;
-};
+#include <Position.h>
 
 struct PlayField
 {
-    Position topLeft;
-    Position topRight;
-    Position botLeft;
-    Position botRight;
+    Position<int> topLeft;
+    Position<int> topRight;
+    Position<int> botLeft;
+    Position<int> botRight;
     float squareWidth;
     float squareHeight;
 };
@@ -199,7 +194,7 @@ inline float findMostFreqentValue(std::vector<int>& values)
     return valF;
 }
 
-inline int getPixelOnLineScoreSmall(Image& image, Position pos, Direction direction)
+inline int getPixelOnLineScoreSmall(Image& image, const Position<int>& pos, Direction direction)
 {
     int maskLR[] = {  3,  1,  0,  1,  3,
                      -1,  0,  0,  0, -1,
@@ -244,7 +239,7 @@ inline int getPixelOnLineScoreSmall(Image& image, Position pos, Direction direct
     return val;
 }
 
-inline int getPixelOnLineScore(const Image& image, Position pos, Direction direction)
+inline int getPixelOnLineScore(const Image& image, const Position<int>& pos, Direction direction)
 {
     int maskUD[] = {  3,  4,  2,  0,  2,  4,  3,
                      -3,  0,  0,  0,  0,  0, -3,
@@ -294,7 +289,7 @@ inline int getPixelOnLineScore(const Image& image, Position pos, Direction direc
     return val;
 }
 
-inline void showPoint(Image& image, Position point)
+inline void showPoint(Image& image, const Position<int>& point)
 {
     for(int y = -2; y <= 2; ++y)
         for(int x = -2; x <= 2; ++x)

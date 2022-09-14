@@ -50,18 +50,22 @@ int main()
         int nameEnd = imagePath.find_last_of(endSymbol);
         std::string name = imagePath.substr(nameStart, nameEnd-nameStart);
 
-        numbers.resize(name.size() + 4);
-        std::fill(numbers.begin(), numbers.end(), IMAGE_NUMBER_EMPTY);
+        numbers.reserve(name.size()); // get 4 empty squares for training
 
+        int countNumber = 0;
         for(int i = 0; i < name.size(); ++i)
         {
             int c = (int)name[i];
             if(c == 'x')
-                numbers[i] = IMAGE_NUMBER_GRAY;
+            {
+                numbers[i] = 10;
+            }
             else
             {
                 ASSERT(c <= 57 && c >= 48);
-                numbers[i] = c - 48;
+                int value = c - 48;
+                numbers.push_back(value);
+                countNumber += 1;
             }
         }
 
@@ -70,7 +74,7 @@ int main()
 
         PictureReader::getNumberImagesForNN(image, &numberImages, numbers);
 
-        ASSERT(numberImages.size() == numbers.size());
+        ASSERT(numberImages.size() == countNumber);
 
         int index = 0;
         for(const auto& image : numberImages)
@@ -91,7 +95,7 @@ int main()
     int height = 0;
     int comp = 0;
 
-    stbi_uc* data = stbi_load("../images/tt.jpg", &width, &height, &comp, STBI_rgb);
+    stbi_uc* data = stbi_load("../images/test/test3.jpg", &width, &height, &comp, STBI_rgb);
 
     ImageRGB image(width, height, data);
 
@@ -102,7 +106,7 @@ int main()
 #elif defined TEST_ALL
 
     NeuralNetwork nn("../neural_network/network");
-    std::string imagePath = "../images/test/test2.jpg";
+    std::string imagePath = "../images/test/test3.jpg";
 
     int width = 0;
     int height = 0;

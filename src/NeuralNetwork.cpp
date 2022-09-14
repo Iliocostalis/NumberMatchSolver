@@ -14,12 +14,12 @@ NeuralNetwork::TrainData::TrainData(const Image& image, int value, int countOutp
         input[i] = (float)image.pixels[i] * scale;
     }
 
-    if(value >= 0 && value < countOutput)
-    {
-        output.resize(countOutput);
-        std::fill(output.begin(), output.end(), 0.0f);
-        output[value] = 1.0f;
-    }
+    ASSERT(value >= 0 && value < countOutput)
+
+    output.resize(countOutput);
+    std::fill(output.begin(), output.end(), 0.0f);
+
+    output[value] = 1.0f;
 }
 
 NeuralNetwork::NeuralNetwork()
@@ -105,10 +105,10 @@ void NeuralNetwork::train()
     for(TrainData& td : trainDataList)
     {
         auto out = fann_run(ann, td.input.data());
-        printf("Number: %.1f Output: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f\n", (float)td.value, out[0], out[1],out[2],out[3],out[4],out[5],out[6],out[7],out[8],out[9],out[10],out[11]);
-        if(c == 9)
-            break;
-        ++c;
+        printf("Number: %.1f Output: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f\n", (float)td.value, out[0], out[1],out[2],out[3],out[4],out[5],out[6],out[7],out[8],out[9]);
+        //if(c == 100)
+        //    break;
+        //++c;
     }
 
     fann_destroy_train(trainData);
@@ -118,8 +118,16 @@ int NeuralNetwork::run(const Image& image) const
 {
     ASSERT(image.width == NN_IMAGE_SIZE && image.height == NN_IMAGE_SIZE);
 
-    TrainData td(image, -1, num_output);
-    auto out = fann_run(ann, td.input.data());
+    float scale = 1.0f / 255.0f;
+    int size = image.width * image.height;
+    std::vector<float> input;
+    input.resize(size);
+    for(int i = 0; i < size; ++i)
+    {
+        input[i] = (float)image.pixels[i] * scale;
+    }
+
+    auto out = fann_run(ann, input.data());
 
     int val = 0;
     float maxStrength = 0.f;
@@ -131,7 +139,7 @@ int NeuralNetwork::run(const Image& image) const
             val = i;
         }
     }
-
+        
     return val;
 }
 

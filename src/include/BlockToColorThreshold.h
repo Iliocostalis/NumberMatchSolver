@@ -12,5 +12,5 @@ class BlockToColorThreshold
 public:
     BlockToColorThreshold(int sampleSizeMin, int sampleSizeMax, Direction direction);
 
-    int getColorThreshold(const Image& image, const Position& pos);
+    int getColorThreshold(const Image& image, const Position<int>& pos);
 };

@@ -1,5 +1,7 @@
 #include <Image.h>
 #include <Utils.h>
+#include <cmath>
+#include <Debugging.h>
 
 Image::Image(int width, int height, uint8_t* pixels) : width(width), height(height), pixels(pixels)
 {
@@ -14,7 +16,7 @@ Image::Image(int width, int height) : width(width), height(height)
 
 Image::Image()
 {
-    
+    createdBuffer = false;
 }
 
 Image::Image(const Image& other)
@@ -34,11 +36,13 @@ Image::~Image()
 
 uint8_t Image::getValue(int x, int y) const
 {
+    ASSERT(x >= 0 && x < width && y >= 0 && y < height);
     return pixels[y * width + x];
 }
 
 void Image::setValue(int x, int y, uint8_t value)
 {
+    ASSERT(x >= 0 && x < width && y >= 0 && y < height);
     pixels[y * width + x] = value;
 }
 
@@ -88,10 +92,28 @@ void Image::scale(Image* out)
     }
 }
 
+void Image::scaleNearest(Image* out)
+{
+    //Image scaledHalf(width, out->height);
+
+    float scaleX = (float)width / (float)out->width;
+    float scaleY = (float)height / (float)out->height;
+
+    for(int y = 0; y < out->height; ++y)
+    {
+        for(int x = 0; x < out->width; ++x)
+        {
+            int val = (int)getValue((int)(x * scaleX + 0.5f), (int)(y * scaleY + 0.5f));
+            //val = std::max(0, std::min(255, (val - 100) * 4));
+            out->setValue(x, y, (uint8_t)val);
+        }
+    }
+}
+
 void Image::lineFilter(Image* out)
 {
     Image tmp(width, height);
-    Position tmpPos;
+    Position<int> tmpPos;
     for(int y = 3; y < height-3; ++y)
     {
         tmpPos.y = y;
@@ -105,7 +127,7 @@ void Image::lineFilter(Image* out)
             val = std::min(255, std::max(val, 0));
             val = 255-val;
 
-            tmp.pixels[y*width+x] = (val);
+            tmp.setValue(x,y,(uint8_t)val);
         }
     }
 
@@ -146,6 +168,7 @@ void Image::lineFilter(Image* out)
 
 ImageRGB::ImageRGB(int width, int height, uint8_t* pixels) : Image(width, height, pixels)
 {
+    createdBuffer = false;
 }
 
 ImageRGB::ImageRGB(int width, int height)
@@ -164,12 +187,31 @@ ImageRGB::~ImageRGB()
 
 uint8_t ImageRGB::getValue(int x, int y, int rgb) const
 {
+    ASSERT(x >= 0 && x < width && y >= 0 && y < height);
     return pixels[(y * width + x)*3 + rgb];
 }
 
 void ImageRGB::setValue(int x, int y, int rgb, uint8_t value)
 {
+    ASSERT(x >= 0 && x < width && y >= 0 && y < height);
     pixels[(y * width + x)*3 + rgb] = value;
+}
+
+void ImageRGB::scaleAndBW(Image* imageOut)
+{
+    float scaleX = (float)width / (float)imageOut->width;
+    float scaleY = (float)height / (float)imageOut->height;
+
+    for(int y = 0; y < imageOut->height; ++y)
+    {
+        for(int x = 0; x < imageOut->width; ++x)
+        {
+            int val = (int)getValue((int)(x * scaleX + 0.5f), (int)(y * scaleY + 0.5f), 1);
+            //val = std::max(0, std::min(255, (val - 100) * 4));
+            //val = (int)(std::pow((float)val / 255.0f, 2.2f) * 255.0f);
+            imageOut->setValue(x, y, (uint8_t)val);
+        }
+    }
 }
 
 void ImageRGB::toBlackWhite(Image* imageOut)
@@ -181,11 +223,11 @@ void ImageRGB::toBlackWhite(Image* imageOut)
         {
             //int bw = ((int)getValue(x, y, 0) + (int)getValue(x, y, 1) + (int)getValue(x, y, 2))/3;
             //float val = 0.2126f * std::pow((float)getValue(x, y, 0)*dev, 2.2f) + 0.7152f * std::pow((float)getValue(x, y, 1)*dev, 2.2f) + 0.0722f * std::pow((float)getValue(x, y, 2)*dev, 2.2f);
-            float val = 0.2126f * (float)getValue(x, y, 0)*dev + 0.7152f * (float)getValue(x, y, 1)*dev + 0.0722f * (float)getValue(x, y, 2)*dev;
+            //float val = 0.2126f * (float)getValue(x, y, 0)*dev + 0.7152f * (float)getValue(x, y, 1)*dev + 0.0722f * (float)getValue(x, y, 2)*dev;
             
-            //int bw = (int)getValue(x, y, 1);
-            //image.setValue(x, y, bw);
-            imageOut->setValue(x, y, (uint8_t) (val*255.0f));
+            int bw = (int)getValue(x, y, 1);
+            imageOut->setValue(x, y, (uint8_t)bw);
+            //imageOut->setValue(x, y, (uint8_t) (val*255.0f));
         }
     }
 }

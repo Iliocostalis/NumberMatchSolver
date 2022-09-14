@@ -8,35 +8,40 @@
 #include <cmath>
 #include <NumberGame.h>
 
+#define COLOR_BLACK 100
 
 void PictureReader::readImage(ImageRGB& imageRGB)
 {
-    Image image(imageRGB.width, imageRGB.height);
-    imageRGB.toBlackWhite(&image);
+    //Image image(imageRGB.width, imageRGB.height);
+    //imageRGB.toBlackWhite(&image);
+
+    int newWidth = 600;
+    int newHeight = imageRGB.height / (imageRGB.width / newWidth);
+
     //saveImage("bw.png", image);
 
     // resize to max 1000 width
-    int newWidth = image.width;
-    int scale = 1;
-    while(newWidth > 1000) newWidth /= 2;
-
-    //newWidth = 900;
-    int newHeight = image.height / (image.width / newWidth);
+    //int newWidth = image.width;
+    //int scale = 1;
+    //while(newWidth > 1000) newWidth /= 2;
+    //int newHeight = image.height / (image.width / newWidth);
 
     Image imageScaled(newWidth, newHeight);
-
     Image imageFiltered(newWidth, newHeight);
 
-    image.scale(&imageScaled);
+    imageRGB.scaleAndBW(&imageScaled);
+    //image.scale(&imageScaled);
     imageScaled.lineFilter(&imageFiltered);
 
-    //saveImage("imageFiltered.png", imageFiltered);
-    //saveImage("imageScaled.png", imageScaled);
+    saveImage("imageFiltered.png", imageFiltered);
+    saveImage("imageScaled.png", imageScaled);
 
     PlayField playFiled = findPlayField(imageFiltered);
-    //findNumbers(imageScaled, imageFiltered, playFiled);
+    std::vector<int> numbers;
+    NeuralNetwork nn;
+    findNumbers(imageScaled, imageFiltered, playFiled, &numbers, nn);
 
-    //saveImage("fin.png", imageFiltered);
+    saveImage("fin.png", imageFiltered);
 }
 
 void PictureReader::getNumbers(ImageRGB& imageRGB, std::vector<int>* numbers, const NeuralNetwork& nn)
@@ -44,16 +49,20 @@ void PictureReader::getNumbers(ImageRGB& imageRGB, std::vector<int>* numbers, co
     Image image(imageRGB.width, imageRGB.height);
     imageRGB.toBlackWhite(&image);
 
+    //int newWidth = 600;
+    //int newHeight = imageRGB.height / (imageRGB.width / newWidth);
+
     // resize to max 1000 width
     int newWidth = image.width;
     int scale = 1;
     while(newWidth > 1000) newWidth /= 2;
-
     int newHeight = image.height / (image.width / newWidth);
 
     Image imageScaled(newWidth, newHeight);
     Image imageFiltered(newWidth, newHeight);
+    saveImage("imageScaled.png", imageScaled);
 
+    //imageRGB.scaleAndBW(&imageScaled);
     image.scale(&imageScaled);
     imageScaled.lineFilter(&imageFiltered);
 
@@ -66,6 +75,9 @@ void PictureReader::getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* o
     Image image(imageRGB.width, imageRGB.height);
     imageRGB.toBlackWhite(&image);
 
+    //int newWidth = 600;
+    //int newHeight = imageRGB.height / (imageRGB.width / newWidth);
+
     // resize to max 1000 width
     int newWidth = image.width;
     int scale = 1;
@@ -75,8 +87,12 @@ void PictureReader::getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* o
     Image imageScaled(newWidth, newHeight);
     Image imageFiltered(newWidth, newHeight);
 
+    //imageRGB.scaleAndBW(&imageScaled);
     image.scale(&imageScaled);
     imageScaled.lineFilter(&imageFiltered);
+
+    //saveImage("imageFiltered.png", imageFiltered);
+    //saveImage("imageScaled.png", imageScaled);
 
     PlayField playFiled = findPlayField(imageFiltered);
     getNumberImages(imageScaled, imageFiltered, playFiled, out, numbers);
@@ -84,39 +100,35 @@ void PictureReader::getNumberImagesForNN(ImageRGB& imageRGB, std::list<Image>* o
     //saveImage("fin.png", imageFiltered);
 }
 
-
-
-
-std::array<Position, 3> findPixelsOnLine(Image& image, Position pos, Direction direction, int maxMove)
+std::array<Position<int>, 3> findPixelsOnLine(Image& image, Position<int> pos, Direction direction, int maxMove)
 {
-    int moveX = 0;
-    int moveY = 0;
+    Position<int> move(0,0);
     Direction scoreDirection;
 
     switch (direction)
     {
         case Direction::UP:
             scoreDirection = Direction::RIGHT;
-            moveY = 1;
+            move.y = 1;
             break;
 
         case Direction::DOWN:
             scoreDirection = Direction::LEFT;
-            moveY = -1;
+            move.y = -1;
             break;
 
         case Direction::RIGHT:
             scoreDirection = Direction::UP;
-            moveX = 1;
+            move.x = 1;
             break;
 
         case Direction::LEFT:
             scoreDirection = Direction::DOWN;
-            moveX = -1;
+            move.x = -1;
             break;
     }
 
-    std::array<Position, 3> positions{pos, pos, pos};
+    std::array<Position<int>, 3> positions{pos, pos, pos};
     std::array<int, 3> scores{0, 0, 0};
     int lastAddedIndex = 0;
     int lastAddedIndexScores = 0;
@@ -150,108 +162,31 @@ std::array<Position, 3> findPixelsOnLine(Image& image, Position pos, Direction d
             }
         }
 
-        pos.x += moveX;
-        pos.y += moveY;
+        pos = pos + move;
     }
 
     return positions;
 }
 
-/*Position findPixelOnLine(Image& image, Position pos, Direction direction)
+std::vector<Position<int>> followLine(Image& image, Direction direction, int stepSize, Position<int> pos)
 {
-    int maskUD[] = { 1, -2,  1,
-                     1, -2,  1,
-                     1, -2,  1};
-
-    int maskLR[] = {  1,  1,  1,
-                     -2, -2, -2,
-                      1,  1,  1};
-
-    int* mask;
-    if(direction == Direction::UP || direction == Direction::DOWN)
-        mask = maskUD;
-    else
-        mask = maskLR;
-
-    int moveX = 0;
-    int moveY = 0;
-    if(direction == Direction::UP)
-        moveX = -1;
-    else if(direction == Direction::DOWN)
-        moveX = 1;
-    else if(direction == Direction::LEFT)
-        moveY = -1;
-    else
-        moveY = 1;
-
-    Position bestLine(pos);
-    int bestLineCount = 0;
-
-    int bestVal = 0;
-    int steps = 0;
-    int maxSteps = image.width/6;
-    while(steps < maxSteps)
-    {
-        int val = 0;
-        int valB = 0;
-        for (int x = 0; x < 3; x++)
-        {
-            for (int y = 0; y < 3; y++)
-            {
-                val += image.getValue(pos.x + x - 1, pos.y + y - 1) * mask[y * 3 + x];
-                valB += image.getValue(pos.x + x - 1, pos.y + y - 1) * maskLR[y * 3 + x];
-            }
-        }
-
-        std::cout << (int)image.getValue(pos.x, pos.y) << std::endl;
-        std::cout << val << std::endl;
-        std::cout << valB << std::endl;
-        std::cout << std::endl;
-        if(val > bestVal && val > 0)
-        {
-            bestVal = val;
-            bestLine = pos;
-
-            //image.setValue(pos.x, pos.y, 255);
-            //image.setValue(pos.x+1, pos.y, 255);
-            //image.setValue(pos.x+1, pos.y+1, 255);
-            //image.setValue(pos.x, pos.y+1, 255);
-        }
-
-        ++steps;
-        pos.x += moveX;
-        pos.y += moveY;
-    }
-
-    //image.setValue(bestLine.x, bestLine.y, 255);
-    //image.setValue(bestLine.x+1, bestLine.y, 255);
-    //image.setValue(bestLine.x+1, bestLine.y+1, 255);
-    //image.setValue(bestLine.x, bestLine.y+1, 255);
-
-    return bestLine;
-}*/
-
-
-std::vector<Position> followLine(Image& image, Direction direction, int stepSize, Position pos)
-{
-    int moveX = 0;
-    int moveY = 0;
+    Position<int> move(0,0);
 
     AverageValues average(4);
 
     switch (direction)
     {
         case Direction::UP:
-            moveY = -stepSize;
+            move.y = -stepSize;
             break;
         case Direction::DOWN:
-            moveY = stepSize;
+            move.y = stepSize;
             break;
         case Direction::LEFT:
-            moveX = -stepSize;
+            move.x = -stepSize;
             break;
         case Direction::RIGHT:
-            moveX = stepSize;
+            move.x = stepSize;
             break;
     }
         
@@ -259,31 +194,29 @@ std::vector<Position> followLine(Image& image, Direction direction, int stepSize
     int lr = 1;
 
     bool oneExtraChance = true;
-    std::vector<Position> line;
-    Position tmpLine;
+    std::vector<Position<int>> line;
+    Position<int> tmpLine;
 
     BlockToColorThreshold blockToColorThreshold(2, 5, direction);
 
     do
     {
-        pos.x += moveX;
-        pos.y += moveY;
+        pos = pos + move;
 
-        int lineOffsetX = 0;
-        int lineOffsetY = 0;
+        Position<int> lineOffset(0,0);
         int hitCount = 0;
         
         average.addValue(blockToColorThreshold.getColorThreshold(image, pos));
         int colorThreshold = average.getValue();
 
-        if(moveX != 0)
+        if(move.x != 0)
             for(int i = -lr; i <= lr; ++i)
             {
                 int val = image.getValue(pos.x, pos.y + i);
                 if(val <= colorThreshold)
                 {
                     ++hitCount;
-                    lineOffsetY += i;
+                    lineOffset.y += i;
                 }
             }
         else
@@ -293,7 +226,7 @@ std::vector<Position> followLine(Image& image, Direction direction, int stepSize
                 if(val <= colorThreshold)
                 {
                     ++hitCount;
-                    lineOffsetX += i;
+                    lineOffset.x += i;
                 }
             }
 
@@ -319,15 +252,15 @@ std::vector<Position> followLine(Image& image, Direction direction, int stepSize
         
         hitCount = std::max(hitCount, 1);
         
-        if(lineOffsetX < 0)
-            pos.x -= (-lineOffsetX)/hitCount;
+        if(lineOffset.x < 0)
+            pos.x -= (-lineOffset.x)/hitCount;
         else
-            pos.x += lineOffsetX/hitCount;
+            pos.x += lineOffset.x/hitCount;
 
-        if(lineOffsetY < 0)
-            pos.y -= (-lineOffsetY)/hitCount;
+        if(lineOffset.y < 0)
+            pos.y -= (-lineOffset.y)/hitCount;
         else
-            pos.y += lineOffsetY/hitCount;
+            pos.y += lineOffset.y/hitCount;
 
         //std::cout << "color: " << (int)pixels[pos.y * width + pos.x] << std::endl;
     }
@@ -338,12 +271,7 @@ std::vector<Position> followLine(Image& image, Direction direction, int stepSize
     return line;
 }
 
-/*std::vector<Position> findLine(Image& image, Direction direction, int stepSize, Position pos)
-{
-    pos = findPixelOnLine(image, pos, direction);
-    return followLine(image, direction, stepSize, pos);
-}*/
-
+/*
 float findSquareSize(Image& image, Position start, Position end, Direction direction)
 {
     float x = start.x;
@@ -393,32 +321,32 @@ float findSquareSize(Image& image, Position start, Position end, Direction direc
     float minVal = 0;
     float maxVal = 0;
     float scale = 0;
-    /*auto highPointBlured = getFrequenzyOfValues(highPointValue, 24, &minVal, &maxVal, &scale);
-    blurVector(highPointBlured);
-    blurVector(highPointBlured);
-    //auto highPointBlured = blurFreqenzyOfValues(highPointValue, 16, &minVal, &maxVal, &scale);
-
-    bool foundMax = false;
-    float last = highPointBlured[0];
-    int cutIndex = 0;
-    for(int i = 1; i < highPointBlured.size()-1; ++i)
-    {
-        if(!foundMax)
-        {
-            if(highPointBlured[i] > highPointBlured[i-1] && highPointBlured[i] >= highPointBlured[i+1])
-                foundMax = true;
-        }
-        else
-        {
-            if(highPointBlured[i+1] >= highPointBlured[i]) // starts increasing
-            {
-                cutIndex = i;
-                break;
-            }
-        }
-    }
-
-    int cutHeight = frequenzyIndexToValue(scale, minVal, cutIndex);*/
+    ///auto highPointBlured = getFrequenzyOfValues(highPointValue, 24, &minVal, &maxVal, &scale);
+    ///blurVector(highPointBlured);
+    ///blurVector(highPointBlured);
+    /////auto highPointBlured = blurFreqenzyOfValues(highPointValue, 16, &minVal, &maxVal, &scale);
+///
+    ///bool foundMax = false;
+    ///float last = highPointBlured[0];
+    ///int cutIndex = 0;
+    ///for(int i = 1; i < highPointBlured.size()-1; ++i)
+    ///{
+    ///    if(!foundMax)
+    ///    {
+    ///        if(highPointBlured[i] > highPointBlured[i-1] && highPointBlured[i] >= highPointBlured[i+1])
+    ///            foundMax = true;
+    ///    }
+    ///    else
+    ///    {
+    ///        if(highPointBlured[i+1] >= highPointBlured[i]) // starts increasing
+    ///        {
+    ///            cutIndex = i;
+    ///            break;
+    ///        }
+    ///    }
+    ///}
+///
+    ///int cutHeight = frequenzyIndexToValue(scale, minVal, cutIndex);
     int cutHeight = 800;
 
     std::vector<int> highPointIndexCapped;
@@ -438,41 +366,40 @@ float findSquareSize(Image& image, Position start, Position end, Direction direc
 
     float mostFreqentSpace = findMostFreqentValue(highPointSpace);
 
-    /*int lastBorderIndex = 0;
-    for(auto& v : highPointSpace)
-    {
-        // 20% tolerance
-        if(std::abs(v - mostFreqentSpace) > (float)mostFreqentSpace * 0.2f)
-            break;
-
-        ++lastBorderIndex;
-    }
-    
-    Position borderPos;
-    borderPos.x = start.x + highPointIndexCapped[lastBorderIndex] * moveX;
-    borderPos.y = start.y + highPointIndexCapped[lastBorderIndex] * moveY;
-    */
+    ///int lastBorderIndex = 0;
+    ///for(auto& v : highPointSpace)
+    ///{
+    ///    // 20% tolerance
+    ///    if(std::abs(v - mostFreqentSpace) > (float)mostFreqentSpace * 0.2f)
+    ///        break;
+///
+    ///    ++lastBorderIndex;
+    ///}
+    ///
+    ///Position borderPos;
+    ///borderPos.x = start.x + highPointIndexCapped[lastBorderIndex] * moveX;
+    ///borderPos.y = start.y + highPointIndexCapped[lastBorderIndex] * moveY;
     
     return mostFreqentSpace;
 }
+*/
 
-Position centerOnLine(const Image& image, const Position& pos, Direction direction)
+Position<int> centerOnLine(const Image& image, const Position<int>& pos, Direction direction)
 {
     int bestScoreUp = 0;
-    int moveX = 0;
-    int moveY = 0;
+    Position<int> move(0, 0);
 
     if(direction == Direction::UP || direction == Direction::DOWN)
-        moveY = 1;
+        move.y = 1;
     else
-        moveX = 1;
+        move.x = 1;
 
-    Position bestPos(pos);
+    Position<int> bestPos(pos);
     for(int i = -2; i <= 2; ++i)
     {
-        Position p;
-        p.x = pos.x + i * moveX;
-        p.y = pos.y + i * moveY;
+        Position<int> p;
+        p = pos + move * i;
+        
         int score = getPixelOnLineScore(image, p, direction);
 
         if(score > bestScoreUp)
@@ -487,111 +414,50 @@ Position centerOnLine(const Image& image, const Position& pos, Direction directi
 
 PlayField PictureReader::findPlayField(Image& image)
 {
-    /*
-    int stepSize = 2;
-    std::vector<Position> up;
-    std::vector<Position> down;
-    std::vector<Position> left;
-    std::vector<Position> right;
-    int trys = 0;
-    Position pos;
-    pos.x = image.width/2;
-    pos.y = image.height/2;
-    do
-    {
-        up = findLine(image, Direction::UP, stepSize, pos);
-        down = findLine(image, Direction::DOWN, stepSize, pos);
-        left = findLine(image, Direction::LEFT, stepSize, pos);
-        right = findLine(image, Direction::RIGHT, stepSize, pos);
-        ++trys;
-
-        pos.x += image.width/16;
-        pos.y += image.height/8;
-        if(trys > 3)
-            return;
-    }
-    while(up.size() < 8 || left.size() < 8 || left.size() < 8 || left.size() < 8);
-
-    
-    float squareUp = findSquareSize(image, up[3], up[up.size()-4], Direction::UP);
-    float squareRight = findSquareSize(image, right[3], right[right.size()-4], Direction::RIGHT);
-    float squareLeft = findSquareSize(image, left[3], left[left.size()-4], Direction::LEFT);
-    float squareDown = findSquareSize(image, down[3], down[down.size()-4], Direction::DOWN);
-
-    float squareHeight = (squareUp + squareDown) * 0.5f; 
-    float squareWidth = (squareLeft + squareRight) * 0.5f;
-
-    bool error = false;
-
-    if(std::abs(squareDown - squareUp) > 2.0f)
-        error = true;
-
-    if(std::abs(squareLeft - squareRight) > 2.0f)
-        error = true;
-        */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     int stepSize = 3;
-    PlayField playField;
+    PlayField playField{};
 
-    Position pos;
+    Position<int> pos;
     pos.x = image.width/2 - image.width/6;
     pos.y = image.height/2 + image.height/6;
     int maxSteps = image.width/3;
-    std::array<Position, 3> upPoints = findPixelsOnLine(image, pos, Direction::RIGHT, maxSteps);
 
-    std::vector<Position> upLine1 = followLine(image, Direction::UP, stepSize, upPoints[0]);
-    std::vector<Position> upLine2 = followLine(image, Direction::UP, stepSize, upPoints[1]);
-    std::vector<Position> upLine3 = followLine(image, Direction::UP, stepSize, upPoints[2]);
+    std::array<Position<int>, 3> upPoints = findPixelsOnLine(image, pos, Direction::RIGHT, maxSteps);
 
-    std::vector<Position>& upLineLongest = upLine1.size() > upLine2.size() ? (upLine1.size() > upLine3.size() ? upLine1 : upLine3) : (upLine2.size() > upLine3.size() ? upLine2 : upLine3);
+    std::vector<Position<int>> upLine1 = followLine(image, Direction::UP, stepSize, upPoints[0]);
+    std::vector<Position<int>> upLine2 = followLine(image, Direction::UP, stepSize, upPoints[1]);
+    std::vector<Position<int>> upLine3 = followLine(image, Direction::UP, stepSize, upPoints[2]);
+
+    std::vector<Position<int>>& upLineLongest = upLine1.size() > upLine2.size() ? (upLine1.size() > upLine3.size() ? upLine1 : upLine3) : (upLine2.size() > upLine3.size() ? upLine2 : upLine3);
 
 
     if(upLineLongest.size() < 10)
         return playField;
 
-    Position lineEndPoint = centerOnLine(image, upLineLongest.back(), Direction::LEFT);
+    Position<int> lineEndPoint = centerOnLine(image, upLineLongest.back(), Direction::LEFT);
 
-    std::vector<Position> lineLeft = followLine(image, Direction::LEFT, stepSize, lineEndPoint);
-    std::vector<Position> lineRight = followLine(image, Direction::RIGHT, stepSize, lineEndPoint);
+    std::vector<Position<int>> lineLeft = followLine(image, Direction::LEFT, stepSize, lineEndPoint);
+    std::vector<Position<int>> lineRight = followLine(image, Direction::RIGHT, stepSize, lineEndPoint);
 
-    Position lineTopLeft = centerOnLine(image, lineLeft.back(), Direction::LEFT);
-    Position lineTopRight = centerOnLine(image, lineRight.back(), Direction::RIGHT);
+    Position<int> lineTopLeft = centerOnLine(image, lineLeft.back(), Direction::LEFT);
+    Position<int> lineTopRight = centerOnLine(image, lineRight.back(), Direction::RIGHT);
 
-    std::vector<Position> lineLeftDown = followLine(image, Direction::DOWN, stepSize, lineTopLeft);
-    std::vector<Position> lineRightDown = followLine(image, Direction::DOWN, stepSize, lineTopRight);
+    std::vector<Position<int>> lineLeftDown = followLine(image, Direction::DOWN, stepSize, lineTopLeft);
+    std::vector<Position<int>> lineRightDown = followLine(image, Direction::DOWN, stepSize, lineTopRight);
 
-    int playfieldWidth = lineRightDown[3].x - lineLeftDown[3].x;
-    int squareWidth = playfieldWidth / 9;
+    int moveStepsInward = 2;
+    int playfieldWidth = lineRightDown[moveStepsInward].x - lineLeftDown[moveStepsInward].x;
+    int squareWidth = playfieldWidth / GAME_WIDTH;
 
-
-    //int centerIndex = (squareWidth / stepSize) / 2;
-    int centerIndex = 2; // take point #2 / last - 2
 
     playField.squareWidth = squareWidth;
     playField.squareHeight = squareWidth;
 
-    playField.topLeft.x = lineLeftDown[centerIndex].x;
-    playField.topLeft.y = lineLeft[lineLeft.size()-1-centerIndex].y;
+    playField.topLeft.x = lineLeftDown[moveStepsInward].x;
+    playField.topLeft.y = lineLeft[lineLeft.size()-1-moveStepsInward].y;
 
-    playField.topRight.x = lineRightDown[centerIndex].x;
-    playField.topRight.y = lineRight[lineRight.size()-1-centerIndex].y;
+    playField.topRight.x = lineRightDown[moveStepsInward].x;
+    playField.topRight.y = lineRight[lineRight.size()-1-moveStepsInward].y;
 
     playField.botLeft = lineLeftDown.back();
     playField.botRight = lineRightDown.back();
@@ -614,7 +480,6 @@ PlayField PictureReader::findPlayField(Image& image)
         image.setValue(p.x, p.y, 255);
     for(auto&p : lineRightDown)
         image.setValue(p.x, p.y, 255);
-
 
     return playField;
 }
@@ -660,99 +525,99 @@ int getCellStatus(Image& number, int size, int* outColorWhite)
     return -1;
 }
 
+Position<int> centerOnCorner(Image& imageFiltered, const Position<int>& position, const Position<int>& move)
+{
+    Position movedDown(position);
+    Position movedRight(position);
+    movedDown.y += move.y;
+    movedRight.x += move.x;
+
+    Position centerDown = centerOnLine(imageFiltered, movedDown, Direction::LEFT);
+    Position centerRight = centerOnLine(imageFiltered, movedRight, Direction::DOWN);
+
+    return Position<int>(centerDown.x, centerRight.y);
+}
+
 void PictureReader::findNumbers(const Image& image, Image& imageFiltered, const PlayField& playField, std::vector<int>* numbers, const NeuralNetwork& nn)
 {
-    float numberWidth = (float)(playField.topRight.x - playField.topLeft.x) / 9.0f;
-    float heightDiff = (float)(playField.topRight.y - playField.topLeft.y) / 9.0f;
+    Position<float> moveVectorPerCell(0.f, 0.f);
+    moveVectorPerCell = (Position<float>)(playField.topRight - playField.topLeft) / (float)GAME_WIDTH;
 
-    Position topLeft(playField.topLeft);
-    Position topRight(playField.topRight);
+    Position<int> topLeft(playField.topLeft);
+    Position<int> topRight(playField.topRight);
 
-    float leftDownX = (float)(playField.botLeft.x - playField.topLeft.x);
-    float leftDownY = (float)(playField.botLeft.y - playField.topLeft.y);
-    leftDownX /= std::abs(leftDownY);
-    leftDownY /= std::abs(leftDownY);
+    Position<float> leftDown(playField.botLeft - playField.topLeft);
+    leftDown = leftDown / std::abs(leftDown.y);
 
-    float rightDownX = (float)(playField.botRight.x - playField.topRight.x);
-    float rightDownY = (float)(playField.botRight.y - playField.topRight.y);
-    rightDownX /= std::abs(rightDownY);
-    rightDownY /= std::abs(rightDownY);
+    Position<float> rightDown(playField.botRight - playField.topRight);
+    rightDown = rightDown / std::abs(rightDown.y);
 
     int cutOutside = 3;
-    Image singleNumber(numberWidth, numberWidth);
-    Image singleNumberScaled(20, 20);
+    Image singleNumber(moveVectorPerCell.x, moveVectorPerCell.x);
+    Image singleNumberScaled(NN_IMAGE_SIZE, NN_IMAGE_SIZE);
     for(int y = 0; y < GAME_HEIGHT_VISIBLE; ++y)
     {
         if(y != 0)
         {
-            // left
-            topLeft.x += leftDownX * numberWidth;
-            topLeft.y += leftDownY * numberWidth;
-            Position movedDown(topLeft);
-            Position movedRight(topLeft);
-            movedDown.y += numberWidth/2;
-            movedRight.x += numberWidth/2;
+            topLeft = topLeft + leftDown * moveVectorPerCell.x;
+            topLeft = centerOnCorner(imageFiltered, topLeft, Position(moveVectorPerCell.x/2, moveVectorPerCell.x/2));
 
-            Position centerDown = centerOnLine(imageFiltered, movedDown, Direction::LEFT);
-            Position centerRight = centerOnLine(imageFiltered, movedRight, Direction::DOWN);
-
-            topLeft.x = centerDown.x;
-            topLeft.y = centerRight.y;
-
-            // right
-            topRight.x += rightDownX * numberWidth;
-            topRight.y += rightDownY * numberWidth;
-
-            movedDown = topRight;
-            movedRight = topRight;
-
-            movedDown.y += numberWidth/2;
-            movedRight.x -= numberWidth/2;
-
-            centerDown = centerOnLine(imageFiltered, movedDown, Direction::LEFT);
-            centerRight = centerOnLine(imageFiltered, movedRight, Direction::DOWN);
-
-            topRight.x = centerDown.x;
-            topRight.y = centerRight.y;
+            topRight = topRight + rightDown * moveVectorPerCell.x;
+            topRight = centerOnCorner(imageFiltered, topRight, Position(-moveVectorPerCell.x/2, moveVectorPerCell.x/2));
         }
 
         //showPoint(imageFiltered, topLeft);
         //showPoint(imageFiltered, topRight);
 
-        numberWidth = (float)(topRight.x - topLeft.x) / 9.0f;
-        heightDiff = (float)(topRight.y - topLeft.y) / 9.0f;
-        int size = (int)numberWidth-cutOutside*2;
+        moveVectorPerCell = (Position<float>)(topRight - topLeft) / (float)GAME_WIDTH;
+
+        int size = (int)moveVectorPerCell.x-cutOutside*2;
 
         for(int x = 0; x < GAME_WIDTH; ++x)
         {
-            Position pos;
-            pos.x = topLeft.x + (int)(numberWidth * (float)x + 0.5f);
-            pos.y = topLeft.y + (int)(heightDiff * (float)x + 0.5f);
+            Position<int> pos;
+            pos = topLeft + (Position<int>)(moveVectorPerCell * (float)x);
 
             int minX = 1000;
             int maxX = 0;
             int minY = 1000;
             int maxY = 0;
-            int colorBlack = 100;
+            
             for(int ys = 0; ys < size; ++ys)
             {
                 for(int xs = 0; xs < size; ++xs)
                 {
                     int value = image.getValue(xs+pos.x+cutOutside, ys+pos.y+cutOutside);
-                    if(value < colorBlack)
+                    singleNumber.setValue(xs, ys, value);
+                    if(value < COLOR_BLACK)
                     {
                         minX = std::min(xs, minX);
                         maxX = std::max(xs, maxX);
                         minY = std::min(ys, minY);
                         maxY = std::max(ys, maxY);
                     }
-                    singleNumber.setValue(xs, ys, value);
                 }
+            }
+
+            int colorWhite;
+            int cs = getCellStatus(singleNumber, size, &colorWhite);
+
+            if(cs == 0)
+            {
+                std::cout << "x";
+                numbers->push_back(FIELD_GRAY);
+                continue;
+            }
+            else if(cs == -1)
+            {
+                std::cout << std::endl;
+                return;
             }
 
             int centerOffsetX = (int)((float)(minX + maxX) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
             int centerOffsetY = (int)((float)(minY + maxY) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
-
+            
+            // center and scale
             Image& imageOut = singleNumberScaled;
             float scale = (float)size / (float)NN_IMAGE_SIZE;
             for(int ys = 0; ys < NN_IMAGE_SIZE; ++ys)
@@ -764,122 +629,85 @@ void PictureReader::findNumbers(const Image& image, Image& imageFiltered, const 
                     int ox = std::max(0, std::min(size-1, xx+centerOffsetX));
                     int oy = std::max(0, std::min(size-1, yy+centerOffsetY));
                     int value = singleNumber.getValue(ox, oy);
-                    imageOut.setValue(xs,ys, value);
+                    imageOut.setValue(xs, ys, value);
                 }
             }
 
             int number = nn.run(imageOut);
-            if(number == IMAGE_NUMBER_EMPTY)
-                return;
+            std::cout << number;
 
             numbers->push_back(number);
             //std::string name = std::string("number_s_t") + std::string("_y") + std::to_string(y) + std::string("_x") + std::to_string(x) + std::string(".png");
             //saveImage(name, imageOut);
         }
+        std::cout << std::endl;
     }
 }
 
 void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, const PlayField& playField, std::list<Image>* out, const std::vector<int>& numbers)
 {
-    float numberWidth = (float)(playField.topRight.x - playField.topLeft.x) / 9.0f;
-    float heightDiff = (float)(playField.topRight.y - playField.topLeft.y) / 9.0f;
+    Position<float> moveVectorPerCell(0.f, 0.f);
+    moveVectorPerCell = (Position<float>)(playField.topRight - playField.topLeft) / (float)GAME_WIDTH;
 
-    Position topLeft(playField.topLeft);
-    Position topRight(playField.topRight);
+    Position<int> topLeft(playField.topLeft);
+    Position<int> topRight(playField.topRight);
 
-    float leftDownX = (float)(playField.botLeft.x - playField.topLeft.x);
-    float leftDownY = (float)(playField.botLeft.y - playField.topLeft.y);
-    leftDownX /= std::abs(leftDownY);
-    leftDownY /= std::abs(leftDownY);
+    Position<float> leftDown(playField.botLeft - playField.topLeft);
+    leftDown = leftDown / std::abs(leftDown.y);
 
-    float rightDownX = (float)(playField.botRight.x - playField.topRight.x);
-    float rightDownY = (float)(playField.botRight.y - playField.topRight.y);
-    rightDownX /= std::abs(rightDownY);
-    rightDownY /= std::abs(rightDownY);
+    Position<float> rightDown(playField.botRight - playField.topRight);
+    rightDown = rightDown / std::abs(rightDown.y);
 
-    int imageCount = 0;
     int cutOutside = 3;
-    int size = numberWidth;
-    Image singleNumber(size, size);
+    Image singleNumber(moveVectorPerCell.x, moveVectorPerCell.x);
+    Image singleNumberScaled(NN_IMAGE_SIZE, NN_IMAGE_SIZE);
+    int imageCount = 0;
     for(int y = 0; y < 11; ++y)
     {
         if(y != 0)
         {
-            // left
-            topLeft.x += leftDownX * numberWidth;
-            topLeft.y += leftDownY * numberWidth;
-            Position movedDown(topLeft);
-            Position movedRight(topLeft);
-            movedDown.y += numberWidth/2;
-            movedRight.x += numberWidth/2;
+            topLeft = topLeft + leftDown * moveVectorPerCell.x;
+            topLeft = centerOnCorner(imageFiltered, topLeft, Position(moveVectorPerCell.x/2, moveVectorPerCell.x/2));
 
-            Position centerDown = centerOnLine(imageFiltered, movedDown, Direction::LEFT);
-            Position centerRight = centerOnLine(imageFiltered, movedRight, Direction::DOWN);
-
-            topLeft.x = centerDown.x;
-            topLeft.y = centerRight.y;
-
-            // right
-            topRight.x += rightDownX * numberWidth;
-            topRight.y += rightDownY * numberWidth;
-
-            movedDown = topRight;
-            movedRight = topRight;
-
-            movedDown.y += numberWidth/2;
-            movedRight.x -= numberWidth/2;
-
-            centerDown = centerOnLine(imageFiltered, movedDown, Direction::LEFT);
-            centerRight = centerOnLine(imageFiltered, movedRight, Direction::DOWN);
-
-            topRight.x = centerDown.x;
-            topRight.y = centerRight.y;
+            topRight = topRight + rightDown * moveVectorPerCell.x;
+            topRight = centerOnCorner(imageFiltered, topRight, Position(-moveVectorPerCell.x/2, moveVectorPerCell.x/2));
         }
 
-        //showPoint(imageFiltered, topLeft);
-        //showPoint(imageFiltered, topRight);
-
-        numberWidth = (float)(topRight.x - topLeft.x) / 9.0f;
-        heightDiff = (float)(topRight.y - topLeft.y) / 9.0f;
-        size = (int)numberWidth-cutOutside*2;
+        moveVectorPerCell = (Position<float>)(topRight - topLeft) / (float)GAME_WIDTH;
+        int size = (int)moveVectorPerCell.x-cutOutside*2;
 
         for(int x = 0; x < 9; ++x)
         {
             if(imageCount >= numbers.size())
                 return;
 
-            Position pos;
-            pos.x = topLeft.x + (int)(numberWidth * (float)x + 0.5f);
-            pos.y = topLeft.y + (int)(heightDiff * (float)x + 0.5f);
+            Position<int> pos;
+            pos = topLeft + (Position<int>)(moveVectorPerCell * (float)x);
 
+            int minX = 1000;
+            int maxX = 0;
+            int minY = 1000;
+            int maxY = 0;
+            int count = 0;
             for(int ys = 0; ys < size; ++ys)
             {
                 for(int xs = 0; xs < size; ++xs)
                 {
                     int value = image.getValue(xs+pos.x+cutOutside, ys+pos.y+cutOutside);
-                    singleNumber.setValue(xs,ys, value);
-                }
-            }
-            
-            int colorBlack = 100;
-            int minX = 1000;
-            int maxX = 0;
-            int minY = 1000;
-            int maxY = 0;
-            for(int ys = 0; ys < size; ++ys)
-            {
-                for(int xs = 0; xs < size; ++xs)
-                {
-                    int value = singleNumber.getValue(xs, ys);
-                    if(value < colorBlack)
+                    singleNumber.setValue(xs, ys, value);
+                    if(value < COLOR_BLACK)
                     {
                         minX = std::min(xs, minX);
                         maxX = std::max(xs, maxX);
                         minY = std::min(ys, minY);
                         maxY = std::max(ys, maxY);
+                        count += 1;
                     }
                 }
             }
+
+            if(count < 50)
+                continue;
 
             int centerOffsetX = (int)((float)(minX + maxX) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
             int centerOffsetY = (int)((float)(minY + maxY) / 2.0f + 0.5f - (float)size/2 + 100.0f) - 100;
@@ -901,6 +729,7 @@ void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, co
 
             //std::string name = std::string("number_s_n") + std::to_string(numbers[y * 9 + x]) + std::string("_y") + std::to_string(y) + std::string("_x") + std::to_string(x) + std::string(".png");
             //saveImage(name, imageOut);
+
             imageCount += 1;
         }
     }

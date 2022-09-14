@@ -6,8 +6,6 @@
 #include <string>
 
 #define NN_IMAGE_SIZE 20
-#define IMAGE_NUMBER_GRAY 10
-#define IMAGE_NUMBER_EMPTY 11
 
 class NeuralNetwork
 {
@@ -22,7 +20,7 @@ class NeuralNetwork
 
 
     const unsigned int num_input = NN_IMAGE_SIZE*NN_IMAGE_SIZE;
-    const unsigned int num_output = 12;
+    const unsigned int num_output = 10;
     const unsigned int num_layers = 4;
     const unsigned int num_neurons_hidden1 = 100;
     const unsigned int num_neurons_hidden2 = 50;

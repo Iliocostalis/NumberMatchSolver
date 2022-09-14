@@ -53,7 +53,7 @@ void printVector(std::vector<float>& vector)
     }
 }
 
-int BlockToColorThreshold::getColorThreshold(const Image& image, const Position& pos)
+int BlockToColorThreshold::getColorThreshold(const Image& image, const Position<int>& pos)
 {
     int index = 0;
     for (int x = -sampleSizeX; x <= sampleSizeX; x++)
