@@ -4,20 +4,26 @@
 #include <NumberGame.h>
 #include <cstring>
 #include <list>
+#include <windows.h> 
+
+HANDLE hConsole;
 
 inline void setOutputColorNormal()
 {
-    std::cout << "\033[0m";
+    //std::cout << "\033[0m";
+    SetConsoleTextAttribute(hConsole, 15);
 }
 
 inline void setOutputColorHighlight()
 {
-    std::cout << "\033[32m";
+    //std::cout << "\033[32m";
+    SetConsoleTextAttribute(hConsole, 10);
 }
 
 inline void setOutputColorRemoveNext()
 {
-    std::cout << "\033[34m";
+    //std::cout << "\033[34m";
+    SetConsoleTextAttribute(hConsole, 9);
 }
 
 NumberGame::NumberGame()
@@ -93,6 +99,7 @@ void NumberGame::removePair(int index)
 
 void NumberGame::findSolution()
 {
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     std::vector<NumberGame> gameHistory;
     gameHistory.push_back(*this);
     gameHistory.back().findPairs();

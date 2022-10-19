@@ -24,6 +24,14 @@
 //#define USER_INPUT
 //#define FIXED_INPUT
 
+void exit()
+{
+    do 
+    {
+        std::cout << '\n' << "Press a key to continue...";
+    } while (std::cin.get() != '\n');
+}
+
 int main()
 {
 #ifdef TRAIN
@@ -139,6 +147,7 @@ int main()
         if(str.size() != 9)
         {
             std::cout << "Wrong input count" << std::endl;
+            exit();
             return 0;
         }
 
@@ -150,6 +159,7 @@ int main()
             else
             {
                 std::cout << "Only numbers allowed" << std::endl;
+                exit();
                 return 0;
             }
         }
@@ -160,6 +170,8 @@ int main()
     //NumberGameBrute::solve(inputs);
     NumberGame numberGame(inputs);
     numberGame.findSolution();
+
+    exit();
 
 #elif defined FIXED_INPUT
     std::vector<int> inputs;
@@ -186,6 +198,7 @@ int main()
     numberGame.findSolution();
     //NumberGameBrute::solve(inputs);
     //NumberGameBrute::solveNew(inputs);
+    exit();
 #else
 
     srand(2);
