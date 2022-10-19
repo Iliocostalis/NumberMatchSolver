@@ -1,8 +1,9 @@
 #pragma once
 
+#include <Utils.h>
+#if DEFINED(LINUX)
 #include <stdint.h>
 #include <Image.h>
-#include <Utils.h>
 #include <list>
 #include <NeuralNetwork.h>
 
@@ -16,3 +17,4 @@ namespace PictureReader
     void findNumbers(const Image& image, Image& imageFiltered, const PlayField& playField, std::vector<int>* numbers, const NeuralNetwork& nn);
     void getNumberImages(const Image& image, Image& imageFiltered, const PlayField& playField, std::list<Image>* out, const std::vector<int>& numbers);
 };
+#endif

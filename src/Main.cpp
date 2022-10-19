@@ -1,6 +1,4 @@
 #include <iostream>
-#include <floatfann.h>
-#include <fann.h>
 #include <vector>
 #include <chrono>
 #include <NumberGame.h>
@@ -11,11 +9,15 @@
 #include <stb_image_write.h>
 #include <PictureReader.h>
 #include <Image.h>
-#include <NeuralNetwork.h>
 #include <Debugging.h>
 #include <filesystem>
+#include <NumberGameBrute.h>
 
-#define TEST_ALL
+#if DEFINED(LINUX)
+#include <NeuralNetwork.h>
+#endif
+
+#define USER_INPUT
 //#define TRAIN
 //#define IMAGE_INPUT
 //#define TEST_ALL
@@ -126,7 +128,8 @@ int main()
 #elif defined USER_INPUT
 
     std::cout << "Input game numbers line by line!" << std::endl;
-    inputNumbers inputs;
+    std::vector<int> inputs;
+    inputs.reserve(3*9);
     int i = 0;
     while(i < 3)
     {
@@ -136,42 +139,53 @@ int main()
         if(str.size() != 9)
         {
             std::cout << "Wrong input count" << std::endl;
-            continue;
+            return 0;
         }
 
         for(int x = 0; x < GAME_WIDTH; ++x)
         {
             char charRead = str[x];
             if(charRead >= 48 && charRead <= 57)
-                inputs[i * GAME_WIDTH + x] = charRead - 48;
+                inputs.push_back(charRead - 48);
             else
             {
                 std::cout << "Only numbers allowed" << std::endl;
-                continue;
+                return 0;
             }
         }
 
         ++i;
     }
     
+    //NumberGameBrute::solve(inputs);
     NumberGame numberGame(inputs);
     numberGame.findSolution();
 
 #elif defined FIXED_INPUT
+    std::vector<int> inputs;
+    inputs.reserve(3*9);
     //inputNumbers inputs = {1,7,6,1,9,4,1,7,4,
     //                        8,5,2,3,2,3,5,2,3,
     //                        4,9,6,1,6,1,4,1,8};
     //inputNumbers inputs = {4,2,1,6,7,8,7,8,9,
     //                        7,5,7,5,9,5,4,5,1,
     //                        8,1,2,6,3,2,8,5,2};
-    inputNumbers inputs = {5,5,7,9,6,1,2,9,5,
-                            7,9,2,5,8,3,5,7,8,
-                            3,8,7,1,4,9,2,9,6};
+    //inputs = {5,5,7,9,6,1,2,9,5,
+    //        7,9,2,5,8,3,5,7,8,
+    //        3,8,7,1,4,9,2,9,6};
     //inputNumbers inputs = {5,5,7,9,6,1,2,9,0,
     //                        0,9,2,5,8,3,5,7,8,
     //                        3,8,7,1,4,9,2,9,6};
+    //inputs = {7,5,1,5,3,1,7,8,5,
+    //3,6,2,6,8,4,5,4,9,
+    //1,5,1,5,9,7,2,6,5};
+    inputs = {8,9,4,2,1,5,2,3,4,
+    3,5,8,3,6,7,4,9,2,
+    6,1,4,9,2,1,8,3,5};
     NumberGame numberGame(inputs);
     numberGame.findSolution();
+    //NumberGameBrute::solve(inputs);
+    //NumberGameBrute::solveNew(inputs);
 #else
 
     srand(2);

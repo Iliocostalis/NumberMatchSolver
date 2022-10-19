@@ -1,3 +1,6 @@
+#include <Utils.h>
+
+#if DEFINED(LINUX)
 #include <NeuralNetwork.h>
 #include <Debugging.h>
 
@@ -147,3 +150,4 @@ void NeuralNetwork::save(const std::string& path) const
 {
     fann_save(ann, path.c_str());
 }
+#endif

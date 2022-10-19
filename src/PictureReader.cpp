@@ -1,8 +1,9 @@
 #include <PictureReader.h>
+#include <Utils.h>
+#if DEFINED(LINUX)
 #include <vector>
 #include <iostream>
 #include <algorithm>
-#include <Utils.h>
 #include <AverageValues.h>
 #include <BlockToColorThreshold.h>
 #include <cmath>
@@ -734,3 +735,4 @@ void PictureReader::getNumberImages(const Image& image, Image& imageFiltered, co
         }
     }
 }
+#endif

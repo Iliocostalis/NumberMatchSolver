@@ -1,5 +1,7 @@
 #include <Image.h>
 #include <Utils.h>
+
+#if DEFINED(LINUX)
 #include <cmath>
 #include <Debugging.h>
 
@@ -231,3 +233,4 @@ void ImageRGB::toBlackWhite(Image* imageOut)
         }
     }
 }
+#endif

@@ -73,6 +73,10 @@ private:
             }
             if(moveX == -1 && moveY == 0 && x == 0)
             {
+                if(y == 0)
+                {
+                    break;
+                }
                 --y;
                 x = width;
             }

@@ -1,6 +1,7 @@
 #pragma once
-#include <Image.h>
 #include <Utils.h>
+#if DEFINED(LINUX)
+#include <Image.h>
 
 class BlockToColorThreshold
 {
@@ -14,3 +15,4 @@ public:
 
     int getColorThreshold(const Image& image, const Position<int>& pos);
 };
+#endif

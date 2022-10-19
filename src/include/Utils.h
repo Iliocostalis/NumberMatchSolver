@@ -3,7 +3,19 @@
 #include <algorithm>
 #include <Image.h>
 #include <Position.h>
+#include <string>
 
+#define DEFINED(v) (v == 1)
+
+#ifndef NDEBUG
+#define DEBUG 1
+#else
+#define DEBUG 0
+#endif
+
+#define WINDOWS 1
+
+#if DEFINED(LINUX)
 struct PlayField
 {
     Position<int> topLeft;
@@ -300,3 +312,4 @@ inline void showPoint(Image& image, const Position<int>& point)
                 image.setValue(point.x+x, point.y+y, 0);
         }
 }
+#endif

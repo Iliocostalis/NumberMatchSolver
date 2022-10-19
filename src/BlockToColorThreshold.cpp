@@ -1,4 +1,6 @@
 #include <BlockToColorThreshold.h>
+
+#if DEFINED(LINUX)
 #include <algorithm>
 #include <iostream>
 
@@ -169,3 +171,4 @@ int BlockToColorThreshold::getColorThreshold(const Image& image, const Position<
 
     return 0;
 }
+#endif
