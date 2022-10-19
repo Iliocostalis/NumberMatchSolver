@@ -102,137 +102,12 @@ private:
         return false;
     }
 
-    inline bool checkTop(int currentNumber, int x, int y)
-    {
-        while(y > 0)
-        {
-            --y;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-        }
-        return false;
-    }
-
-    inline bool checkBottom(int currentNumber, int x, int y)
-    {
-        while(y < height-1)
-        {
-            ++y;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-        }
-        return false;
-    }
-
-    inline bool checkLeft(int currentNumber, int x, int y)
-    {
-        while(x > 0)
-        {
-            --x;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-        }
-        return false;
-    }
-
-    // jump
-    inline bool checkRight(int currentNumber, int x, int y)
-    {
-        while(x < width-1)
-        {
-            ++x;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-
-            if(x == width && y < height-1)
-            {
-                ++y;
-                x = 0;
-            }
-        }
-        return false;
-    }
-
-    inline bool checkTopLeft(int currentNumber, int x, int y)
-    {
-        while(x > 0 && y > 0)
-        {
-            --x;
-            --y;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-        }
-        return false;
-    }
-
-    inline bool checkTopRight(int currentNumber, int x, int y)
-    {
-        while(x < width-1 && y > 0)
-        {
-            ++x;
-            --y;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-        }
-        return false;
-    }
-
-    inline bool checkBottomLeft(int currentNumber, int x, int y)
-    {
-        while(x > 0 && y < height-1)
-        {
-            --x;
-            ++y;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-        }
-        return false;
-    }
-
-    inline bool checkBottomRight(int currentNumber, int x, int y)
-    {
-        while(x < width-1 && y < height-1)
-        {
-            ++x;
-            ++y;
-            int number = getNumber(x, y);
-            if(number < 0)
-                continue;
-            return areNumbersOk(number, currentNumber);
-        }
-        return false;
-    }
-
     inline bool isRemovable(int x, int y)
     {
         int n = getNumber(x, y);
 
         std::vector<Pair> pairs;
 
-#ifndef NDEBUG
-        /*bool b = checkTop(n, x, y);
-        b |= checkBottom(n, x, y);
-        b |= checkLeft(n, x, y);
-        b |= checkRight(n, x, y);
-        b |= checkTopLeft(n, x, y);
-        b |= checkTopRight(n, x, y);
-        b |= checkBottomLeft(n, x, y);
-        b |= checkBottomRight(n, x, y);
-        return b;*/
         bool b = check(n, x, y, 1, 0, &pairs);
         b |= check(n, x, y, -1, 0, &pairs);
         b |= check(n, x, y, 0, 1, &pairs);
@@ -242,17 +117,6 @@ private:
         b |= check(n, x, y, -1, 1, &pairs);
         b |= check(n, x, y, -1, -1, &pairs);
         return b;
-#else
-        
-        return checkTop(n, x, y) || 
-                checkBottom(n, x, y) || 
-                checkLeft(n, x, y) || 
-                checkRight(n, x, y) || 
-                checkTopLeft(n, x, y) || 
-                checkTopRight(n, x, y) || 
-                checkBottomLeft(n, x, y) || 
-                checkBottomRight(n, x, y);
-#endif
     }
 
     void printNumber(int x, int y);
