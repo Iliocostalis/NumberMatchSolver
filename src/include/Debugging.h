@@ -1,5 +1,4 @@
 #pragma once
-#include <csignal>
 
 #if DEFINED(WINDOWS)
     #include <intrin.h>

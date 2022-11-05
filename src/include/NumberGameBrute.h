@@ -13,4 +13,5 @@ namespace NumberGameBrute
 {
     extern void solve(std::vector<int>& numbersIn);
     extern void solveNew(std::vector<int>& numbersIn);
+    extern void sovleFindMax4Times(std::vector<int>& numbersIn);
 }

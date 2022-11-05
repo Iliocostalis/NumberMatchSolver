@@ -1,3 +1,4 @@
+#include <Utils.h>
 #include <vector>
 #include <algorithm>
 #include <iostream>
@@ -6,6 +7,9 @@
 #include <list>
 #include <unordered_set>
 #include <city.h>
+#if DEFINED(WINDOWS)
+#include <windows.h> 
+#endif
 
 namespace NumberGameBrute
 {
@@ -15,6 +19,8 @@ namespace NumberGameBrute
         uint32_t fieldCount;
         uint32_t numberCount;
         uint32_t addCount;
+        uint32_t removedIndex1;
+        uint32_t removedIndex2;
         uint8_t numbers[GAME_HEIGHT_MAX*GAME_WIDTH];
     };
 
@@ -47,7 +53,7 @@ namespace NumberGameBrute
             //    hash = hash ^ ((size_t*)game.numbers)[i];
             //}
 
-            hash = CityHash32((char*)game.numbers, game.numberCount);
+            hash = CityHash32((char*)game.numbers, game.fieldCount);
             //std::cout << hash << std::endl;
             return hash;
         }
@@ -71,6 +77,26 @@ namespace NumberGameBrute
 
     uint32_t pairIndex;
     uint32_t pairs[GAME_HEIGHT_MAX*GAME_WIDTH / 2];
+
+    HANDLE hConsole;
+
+    inline void setOutputColorNormal()
+    {
+        //std::cout << "\033[0m";
+        SetConsoleTextAttribute(hConsole, 15);
+    }
+
+    inline void setOutputColorHighlight()
+    {
+        //std::cout << "\033[32m";
+        SetConsoleTextAttribute(hConsole, 10);
+    }
+
+    inline void setOutputColorRemoveNext()
+    {
+        //std::cout << "\033[34m";
+        SetConsoleTextAttribute(hConsole, 9);
+    }
 
     inline bool areNumbersOk(uint8_t a, uint8_t b)
     {
@@ -225,15 +251,220 @@ namespace NumberGameBrute
     void add(uint32_t indexParent, uint32_t index)
     {
         int countField = games[indexParent].fieldCount;
-        int indexField = 0;
+        int offsetNumber = 0;
         for(int i = 0; i < countField; ++i)
         {
             uint8_t number = games[indexParent].numbers[i];
             if(number != FIELD_GRAY)
             {
-                games[index].numbers[indexField+countField] = number;
-                indexField += 1;
+                games[index].numbers[offsetNumber+countField] = number;
+                offsetNumber += 1;
             }
+        }
+    }
+
+    void print(int index)
+    {
+        Game* gameChild = nullptr;
+        do
+        {
+            findPairs(index);
+            Game& game = games[index];
+            int gameHeight = (game.fieldCount+GAME_WIDTH-1)/GAME_WIDTH;
+
+            std::cout << "Game:" << std::endl;
+
+            for(int x = 0; x <= GAME_WIDTH*2; ++x)
+                std::cout << "-";
+            std::cout << std::endl;
+
+            for(int y = 0; y < gameHeight; ++y)
+            {
+                std::cout << "|";
+                for(int x = 0; x < GAME_WIDTH; ++x)
+                {
+                    int fieldIndex = y*GAME_WIDTH+x;
+                    int number = game.numbers[fieldIndex];
+
+                    if(number == FIELD_EMPTY || number == FIELD_GRAY || fieldIndex >= game.fieldCount)
+                        std::cout << " |";
+                    else
+                    {
+                        bool highlight = false;
+                        for(int i = 0; i < pairIndex; ++i)
+                        {
+                            if(fieldIndex == pairs[i])
+                                highlight = true;
+                        }
+                        if(highlight)
+                        {
+                            int pIndex = pairIndex-1;
+                            if(gameChild != nullptr && (gameChild->removedIndex1 == fieldIndex || gameChild->removedIndex2 == fieldIndex))
+                                setOutputColorRemoveNext();
+                            else
+                                setOutputColorHighlight();
+
+                            std::cout << number;
+                            setOutputColorNormal();
+                            std::cout << "|";
+                        }
+                        else
+                            std::cout << number << "|";
+                    }
+                }
+                std::cout << std::endl;
+
+                for(int x = 0; x <= GAME_WIDTH*2; ++x)
+                    std::cout << "-";
+
+                std::cout << std::endl;
+            }
+
+            if(index == 0)
+                break;
+
+            gameChild = &game;
+            index = game.indexParent;
+        } while(true);
+    }
+
+    void sovleFindMax4Times(std::vector<int>& numbersIn)
+    {
+        hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+        if(numbersIn.size() > GAME_HEIGHT_MAX*GAME_WIDTH)
+            return;
+
+        games = new Game[maxGamesCount];
+        Game& startGame = games[0];
+
+        for(uint32_t i = 0; i < numbersIn.size(); ++i)
+            startGame.numbers[i] = (uint8_t)numbersIn[i];
+
+        startGame.fieldCount = numbersIn.size();
+        startGame.numberCount = numbersIn.size();
+        startGame.indexParent = 0;
+        startGame.addCount = 4;
+
+        const auto pair = set.insert(startGame);
+
+        int minNumCount = startGame.numberCount;
+        uint32_t indexGames = 0;
+        uint32_t indexGamesBack = 1;
+        int skipped = 0;
+        uint64_t indexGameMinNumbers = 0;
+        //Game& currentGame = startGame;
+
+        while(true)
+        {
+            do
+            {
+                Game& gameCurrent = games[indexGames];
+                findPairs(gameCurrent);
+
+                int newCount = pairIndex/2;
+                for(int i = 0; i < newCount; ++i)
+                {
+                    Game& gameNew = games[indexGamesBack];
+                    gameNew.indexParent = indexGames;
+                    gameNew.addCount = gameCurrent.addCount;
+                    gameNew.fieldCount = gameCurrent.fieldCount;
+
+                    for(int l = 0; l < gameCurrent.fieldCount; ++l)
+                        gameNew.numbers[l] = gameCurrent.numbers[l];
+
+                    gameNew.removedIndex1 = pairs[i*2];
+                    gameNew.removedIndex2 = pairs[i*2+1];
+                    gameNew.numbers[pairs[i*2]] = FIELD_GRAY;
+                    gameNew.numbers[pairs[i*2+1]] = FIELD_GRAY;
+                    gameNew.numberCount = gameCurrent.numberCount - 2;
+
+                    // remove gray row
+                    int gameHeight = (gameCurrent.fieldCount+GAME_WIDTH-1)/GAME_WIDTH;
+
+                    bool grayRow = true;
+                    for(int l = (gameHeight-1)*GAME_WIDTH; l < gameCurrent.fieldCount; ++l)
+                    {
+                        if(gameNew.numbers[l] != FIELD_GRAY)
+                            grayRow = false;
+                    }
+
+                    if(grayRow)
+                        gameNew.fieldCount -= gameCurrent.fieldCount - (gameHeight-1)*GAME_WIDTH;
+
+                    for(int y = gameHeight-2; y >= 0; --y)
+                    {
+                        bool grayRow = true;
+                        for(int x = 0; x < GAME_WIDTH; ++x)
+                        {
+                            if(gameNew.numbers[y*GAME_WIDTH + x] != FIELD_GRAY)
+                                grayRow = false;
+                        }
+
+                        if(grayRow)
+                        {
+                            for(int yc = y; yc < gameHeight-1; ++yc)
+                                for(int xc = 0; xc < GAME_WIDTH; ++xc)
+                                    gameNew.numbers[yc * GAME_WIDTH + xc] = gameNew.numbers[(yc+1) * GAME_WIDTH + xc];
+
+                            gameNew.fieldCount -= GAME_WIDTH;
+                        }
+                    }
+
+
+                    if(gameNew.numberCount < minNumCount)
+                    {
+                        minNumCount = gameNew.numberCount;
+                        indexGameMinNumbers = indexGames;
+                        std::cout << "min: " << minNumCount << std::endl;
+                    }
+
+                    if(gameNew.numberCount == 0)
+                    {
+                        print(indexGamesBack);
+                        return;
+                    }
+
+                    if(indexGamesBack % 10000 == 0)
+                        std::cout << indexGamesBack << "  " << comp << std::endl;
+
+                    const auto pair = set.insert(gameNew);
+                    if(pair.second)
+                        indexGamesBack += 1;
+                    else
+                        skipped += 1;
+                }
+
+                indexGames += 1;
+
+            } while (indexGames < indexGamesBack);
+            
+            Game& gameCurrent = games[indexGameMinNumbers];
+            if(gameCurrent.addCount <= 0)
+                return;
+
+            // Use add
+            Game& gameNew = games[indexGamesBack];
+            gameNew.indexParent = indexGameMinNumbers;
+            gameNew.addCount = gameCurrent.addCount - 1;
+            gameNew.fieldCount = gameCurrent.fieldCount + gameCurrent.numberCount;
+            gameNew.numberCount = gameCurrent.numberCount * 2;
+
+            int offsetNumber = 0;
+            for(int i = 0; i < gameCurrent.fieldCount; ++i)
+            {
+                uint8_t number = gameCurrent.numbers[i];
+
+                gameNew.numbers[i] = number;
+                if(number != FIELD_GRAY)
+                    gameNew.numbers[gameCurrent.fieldCount + offsetNumber++] = number;
+            }
+
+
+            const auto pair = set.insert(gameNew);
+
+            minNumCount = gameNew.numberCount;
+            indexGamesBack += 1;
         }
     }
 

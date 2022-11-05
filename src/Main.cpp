@@ -17,7 +17,7 @@
 #include <NeuralNetwork.h>
 #endif
 
-#define USER_INPUT
+#define FIXED_INPUT
 //#define TRAIN
 //#define IMAGE_INPUT
 //#define TEST_ALL
@@ -26,8 +26,12 @@
 
 void exit()
 {
+    int forceBreakCount = 0;
     do 
     {
+        forceBreakCount++;
+        if(forceBreakCount > 5)
+            return;
         std::cout << '\n' << "Press a key to continue...";
     } while (std::cin.get() != '\n');
 }
@@ -194,10 +198,10 @@ int main()
     inputs = {8,9,4,2,1,5,2,3,4,
     3,5,8,3,6,7,4,9,2,
     6,1,4,9,2,1,8,3,5};
-    NumberGame numberGame(inputs);
-    numberGame.findSolution();
+    //NumberGame numberGame(inputs);
+    //numberGame.findSolution();
     //NumberGameBrute::solve(inputs);
-    //NumberGameBrute::solveNew(inputs);
+    NumberGameBrute::sovleFindMax4Times(inputs);
     exit();
 #else
 
